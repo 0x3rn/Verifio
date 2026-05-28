@@ -285,10 +285,18 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 }
 
 .navbar__inner {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 4rem;
+}
+
+@media (min-width: 768px) {
+  .navbar__inner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    justify-content: initial;
+  }
 }
 
 .navbar__logo {
@@ -297,7 +305,10 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
   gap: 0.625rem;
   flex-shrink: 0;
   text-decoration: none;
-  justify-self: start;
+}
+
+@media (min-width: 768px) {
+  .navbar__logo { justify-self: start; }
 }
 
 .navbar__logo-icon {
@@ -357,7 +368,10 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  justify-self: end;
+}
+
+@media (min-width: 768px) {
+  .navbar__actions { justify-self: end; }
 }
 
 /* Theme toggle */

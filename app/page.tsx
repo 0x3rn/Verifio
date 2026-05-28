@@ -184,7 +184,11 @@ export default function Home() {
                 <span className="service-item__name">{service.name}</span>
               </div>
             ))}
+            <div className="services-more">+ many more</div>
           </div>
+          <p className="affiliation-disclaimer">
+            Verifio is an independent verification platform. We are not affiliated with, endorsed by, or sponsored by any of the listed services. All trademarks and service marks belong to their respective owners.
+          </p>
 
           {/* Countries */}
           <div className="countries-subsection">
@@ -198,6 +202,9 @@ export default function Home() {
                   <span className="country-item__name">{country.name}</span>
                 </div>
               ))}
+              <div className="countries-more">
+                <span className="countries-more__globe">🌍</span> + many more
+              </div>
             </div>
           </div>
         </div>
