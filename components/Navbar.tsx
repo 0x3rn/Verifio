@@ -2,17 +2,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
 import { SunIcon, MoonIcon, ShieldIcon, HomeIcon, ClipboardIcon, PhoneIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -111,13 +118,13 @@ export function Navbar() {
                       <p className="user-menu__dropdown-email">{user.email}</p>
                     </div>
                     <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
-                      <HomeIcon className="icon-md text-muted" /> Dashboard
+                      <HomeIcon className="icon-md" /> Dashboard
                     </Link>
                     <Link href="/dashboard/orders" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
-                      <ClipboardIcon className="icon-md text-muted" /> Order History
+                      <ClipboardIcon className="icon-md" /> Order History
                     </Link>
                     <Link href="/dashboard/rentals" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
-                      <PhoneIcon className="icon-md text-muted" /> My Rentals
+                      <PhoneIcon className="icon-md" /> My Rentals
                     </Link>
                     <div className="user-menu__dropdown-divider" />
                     <button onClick={handleLogout} className="user-menu__dropdown-logout">
@@ -148,20 +155,23 @@ export function Navbar() {
         {menuOpen && (
           <div className="mobile-menu">
             <div className="mobile-menu__inner">
-              <Link href="/#features" onClick={() => setMenuOpen(false)} className="mobile-menu__link">Features</Link>
-              <Link href="/#pricing" onClick={() => setMenuOpen(false)} className="mobile-menu__link">Pricing</Link>
-              <Link href="/#how-it-works" onClick={() => setMenuOpen(false)} className="mobile-menu__link">How It Works</Link>
+              <Link href="/#features" className="mobile-menu__link">Features</Link>
+              <Link href="/#pricing" className="mobile-menu__link">Pricing</Link>
+              <Link href="/#how-it-works" className="mobile-menu__link">How It Works</Link>
               {!user && (
                 <>
                   <div className="mobile-menu__divider" />
-                  <Link href="/login" onClick={() => setMenuOpen(false)} className="mobile-menu__signin">Sign In</Link>
-                  <Link href="/register" onClick={() => setMenuOpen(false)} className="mobile-menu__cta">Get Started</Link>
+                  <Link href="/login" className="mobile-menu__signin">Sign In</Link>
+                  <Link href="/register" className="mobile-menu__cta">Get Started</Link>
                 </>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* Top loader bar */}
+      <div id="top-loader" className="top-loader" />
     </nav>
   );
 }

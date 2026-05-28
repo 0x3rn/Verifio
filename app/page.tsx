@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldIcon, CheckCircleIcon, TargetIcon } from '@/components/Icons';
+import { ShieldIcon, CheckCircleIcon, TargetIcon, LockIcon } from '@/components/Icons';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 
 const tabIcons: Record<string, React.ReactNode> = {
@@ -37,8 +37,8 @@ export default function Home() {
         <div className="page-container">
           <div className="hero__content">
             <div className="hero__badge">
-              <span className="hero__badge-dot" />
-              <span>Powered by SMSpool API</span>
+              <LockIcon className="icon-sm text-indigo" />
+              <span>100% Private & Anonymous</span>
             </div>
 
             <h1 className="hero__title">

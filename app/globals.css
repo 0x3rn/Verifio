@@ -284,6 +284,32 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
   border-bottom: 1px solid transparent;
 }
 
+/* Top loader (page navigation indicator) */
+.top-loader {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: #6366f1;
+  width: 0%;
+  opacity: 0;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+}
+
+.top-loader--loading {
+  opacity: 1;
+  animation: loaderProgress 1.5s ease-in-out;
+}
+
+@keyframes loaderProgress {
+  0% { width: 0%; }
+  30% { width: 40%; }
+  60% { width: 75%; }
+  90% { width: 95%; }
+  100% { width: 100%; opacity: 0; }
+}
+
 .navbar__inner {
   display: flex;
   align-items: center;
@@ -3446,6 +3472,8 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 
 .text-white { color: white; }
 .text-success { color: #22c55e; }
+.text-indigo { color: #6366f1; }
+.dark .text-indigo { color: #818cf8; }
 
 /* Icons sizing */
 .icon-xs { width: 0.75rem; height: 0.75rem; }
