@@ -68,16 +68,16 @@ export const SUPPORTED_SERVICES = [
 ];
 
 export const SUPPORTED_COUNTRIES = [
-  { code: 'US', name: 'United States' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'IN', name: 'India' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'BR', name: 'Brazil' },
+  { code: 'US', name: '🇺🇸 United States' },
+  { code: 'GB', name: '🇬🇧 United Kingdom' },
+  { code: 'CA', name: '🇨🇦 Canada' },
+  { code: 'AU', name: '🇦🇺 Australia' },
+  { code: 'DE', name: '🇩🇪 Germany' },
+  { code: 'FR', name: '🇫🇷 France' },
+  { code: 'NL', name: '🇳🇱 Netherlands' },
+  { code: 'SE', name: '🇸🇪 Sweden' },
+  { code: 'ID', name: '🇮🇩 Indonesia' },
+  { code: 'IN', name: '🇮🇳 India' },
+  { code: 'PH', name: '🇵🇭 Philippines' },
+  { code: 'BR', name: '🇧🇷 Brazil' },
 ];
