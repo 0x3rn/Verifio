@@ -42,13 +42,13 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Account */}
+          {/* Legal & Support */}
           <div>
-            <h4 className="footer__heading">Account</h4>
+            <h4 className="footer__heading">Legal & Support</h4>
             <ul className="footer__links">
-              <li><Link href="/dashboard" className="footer__link">Dashboard</Link></li>
-              <li><Link href="/login" className="footer__link">Sign In</Link></li>
-              <li><Link href="/register" className="footer__link">Create Account</Link></li>
+              <li><Link href="/privacy" className="footer__link">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="footer__link">Terms of Service</Link></li>
+              <li><Link href="/contact" className="footer__link">Contact Us</Link></li>
             </ul>
           </div>
         </div>
