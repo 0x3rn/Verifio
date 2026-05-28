@@ -170,8 +170,6 @@ export function Navbar() {
         )}
       </div>
 
-      {/* Top loader bar */}
-      <div id="top-loader" className="top-loader" />
     </nav>
   );
 }

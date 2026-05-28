@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import NextTopLoader from 'nextjs-toploader';
 import { ThemeProvider } from "./providers";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -40,6 +41,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        <NextTopLoader
+          color="#6366f1"
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+          shadow="0 0 10px #6366f1,0 0 5px #6366f1"
+        />
         <ThemeProvider>
           <div className="body-wrapper">
             <Navbar />
