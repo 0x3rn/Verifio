@@ -53,12 +53,6 @@ export function Footer() {
 
         <div className="footer__bottom">
           <p className="footer__copy">&copy; {new Date().getFullYear()} Verifio. All rights reserved.</p>
-          <p className="footer__powered">
-            Powered by{' '}
-            <a href="https://smspool.net" target="_blank" rel="noopener noreferrer">
-              SMSpool
-            </a>
-          </p>
         </div>
       </div>
     </footer>

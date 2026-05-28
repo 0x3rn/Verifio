@@ -168,7 +168,7 @@ body {
 .empty-state__title, .empty-state__desc,
 .filter-btn--active,
 .footer__brand-name, .footer__brand-desc, .footer__heading, .footer__link,
-.footer__bottom, .footer__copy, .footer__powered,
+.footer__bottom, .footer__copy,
 .progress-bar, .code-display__label,
 .badge--completed, .badge--waiting, .badge--pending,
 .badge--expired, .badge--cancelled, .badge--active,
@@ -748,17 +748,6 @@ body {
   color: var(--muted);
 }
 
-.footer__powered {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.footer__powered a {
-  color: #6366f1;
-  text-decoration: none;
-}
-
-.footer__powered a:hover { text-decoration: underline; }
 
 /* =============================================
    HOME PAGE
