@@ -160,7 +160,7 @@ export function Navbar() {
                 <>
                   <div className="mobile-menu__divider" />
                   <Link href="/login" className="mobile-menu__signin">Sign In</Link>
-                  <Link href="/register" className="mobile-menu__cta">Get Started</Link>
+                  <Link href="/contact" className="mobile-menu__highlight">Contact Us</Link>
                 </>
               )}
             </div>

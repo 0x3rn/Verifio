@@ -102,63 +102,84 @@ body {
 .smooth-border { transition: border-color 0.4s ease; }
 .smooth-color { transition: color 0.4s ease; }
 
-/* Theme transition for all themed elements */
-*, *::before, *::after {
-  transition-timing-function: ease;
-  transition-duration: 0.4s;
-  transition-property: none;
+/* Smooth theme transitions — only on body/html and key themed elements */
+html,
+body {
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 /* Only transition color-related properties for theme switching */
-body, .navbar, .navbar--scrolled, .navbar__inner,
+.navbar, .navbar--scrolled,
 .section, .section-alt, .footer,
-.hero, .hero__content, .hero__badge, .hero__title, .hero__desc, .hero__title-accent,
-.hero-stat, .hero-stat__value, .hero-stat__label,
-.tabs__inner, .tab, .tab--active,
-.feature-card, .feature-card__title, .feature-card__desc,
-.feature-item, .feature-item__title, .feature-item__desc,
-.feature-plan-item, .feature-plan-item__label, .feature-plan-item__days,
-.service-item, .country-item, .country-item__name,
-.step-card, .step-card__title, .step-card__desc,
-.pricing-card, .pricing-card__title, .pricing-card__subtitle,
-.pricing-card__price-value, .pricing-card__price-original,
-.pricing-card__cta--secondary,
-.faq__item, .faq__summary, .faq__answer, .faq__chevron,
-.auth-page, .auth-form-card, .auth-header__title, .auth-header__subtitle,
-.auth-footer__text, .form-field__label, .form-field__input,
-.dashboard, .dashboard__title, .dashboard__subtitle,
-.stat-card, .stat-card__label, .stat-card__value,
-.dashboard-form-card, .dashboard-form-card__title,
+.hero, .hero__content,
+.hero-stat,
+.tabs__inner, .tab,
+.feature-card, .feature-item, .feature-plan-item,
+.service-item, .country-item,
+.step-card, .pricing-card,
+.faq__item, .faq__summary,
+.auth-form-card,
+.stat-card, .dashboard-form-card,
 .verification-tabs, .verification-tab,
 .selector-btn, .selector-search-input,
-.selector-section__label, .selector-empty,
-.active-order, .active-order__title, .active-order__field-label,
-.active-order__phone, .active-order__cost,
-.check-code-btn, .status-msg,
-.sidebar-card, .sidebar-card__title,
-.sidebar-link, .account-info__label, .account-info__value,
-.sub-page, .list-card, .list-card__service, .list-card__country,
-.card-detail__label, .card-detail__value,
-.card-detail__phone-row,
-.empty-state, .empty-state__title, .empty-state__desc,
-.filter-btn, .filter-btn--active,
-.footer__brand-name, .footer__brand-desc, .footer__heading, .footer__link,
-.footer__bottom, .footer__copy, .footer__powered,
+.active-order, .status-msg,
+.sidebar-card, .sidebar-link,
+.sub-page, .list-card,
+.empty-state,
+.filter-btn,
+.card-action-btn,
+.cta-section, .cta-card,
+.card-code-section,
+.code-item,
+.badge,
+.legal-page,
+.contact-form,
+.toast {
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
 .navbar__link, .navbar__logo-text, .user-menu__name,
 .mobile-menu__link, .breadcrumb__link,
-.progress-bar, .code-item, .badge,
-.card-action-btn, .code-display__label,
+.hero__badge, .hero__title, .hero__desc, .hero__title-accent,
+.hero-stat__value, .hero-stat__label,
+.tab--active, .feature-card__title, .feature-card__desc,
+.feature-item__title, .feature-item__desc,
+.feature-plan-item__label, .feature-plan-item__days,
+.service-item__name, .country-item__name,
+.step-card__title, .step-card__desc,
+.pricing-card__title, .pricing-card__subtitle,
+.pricing-card__price-value, .pricing-card__price-original,
+.pricing-card__cta--secondary,
+.faq__answer, .faq__chevron,
+.auth-page, .auth-header__title, .auth-header__subtitle,
+.auth-footer__text, .form-field__label, .form-field__input,
+.dashboard, .dashboard__title, .dashboard__subtitle,
+.stat-card__label, .stat-card__value,
+.dashboard-form-card__title,
+.selector-section__label, .selector-empty,
+.active-order__title, .active-order__field-label,
+.active-order__phone, .active-order__cost,
+.check-code-btn,
+.sidebar-card__title,
+.account-info__label, .account-info__value,
+.list-card__service, .list-card__country,
+.card-detail__label, .card-detail__value,
+.card-detail__phone-row,
+.empty-state__title, .empty-state__desc,
+.filter-btn--active,
+.footer__brand-name, .footer__brand-desc, .footer__heading, .footer__link,
+.footer__bottom, .footer__copy, .footer__powered,
+.progress-bar, .code-display__label,
 .badge--completed, .badge--waiting, .badge--pending,
 .badge--expired, .badge--cancelled, .badge--active,
 .badge--type, .badge--plan,
-.cta-section, .cta-card,
-.card-code-section, .card-code-section__label, .card-code-section__value,
+.card-code-section__label, .card-code-section__value,
 .codes-section__title, .codes-section__empty,
 .code-item__time-text, .code-item__sms, .code-item__code,
-.legal-page, .legal-page__text, .legal-page__heading, .legal-page__subheading,
-.contact-form, .contact-form__input, .contact-form__textarea,
-.toast, .toast__title, .toast__message {
-  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+.legal-page__text, .legal-page__heading, .legal-page__subheading,
+.contact-form__input, .contact-form__textarea,
+.toast__title, .toast__message {
+  transition: color 0.35s ease;
 }
 
 /* =============================================
@@ -322,15 +343,10 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 .navbar__logo:hover .navbar__logo-img { transform: scale(1.05); }
 
 .navbar__logo-text {
-  font-size: 1.25rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.025em;
   color: var(--foreground);
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .navbar__logo-text { display: block; }
 }
 
 /* Desktop nav links — centered */
@@ -346,8 +362,8 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 }
 
 .navbar__link {
-  padding: 0.5rem 0.875rem;
-  font-size: 0.875rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
   color: var(--muted);
   border-radius: 0.5rem;
   text-decoration: none;
@@ -510,8 +526,8 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 
 .btn-signin {
   display: none;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--muted);
   border-radius: 0.5rem;
@@ -530,8 +546,8 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 
 .btn-cta {
   display: inline-flex;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: white;
   background-color: #6366f1;
@@ -608,16 +624,18 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 
 .mobile-menu__signin:hover { background-color: rgba(99,102,241,0.1); }
 
-.mobile-menu__cta {
+.mobile-menu__highlight {
   padding: 0.625rem 1rem;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: white;
-  background-color: #6366f1;
+  color: #6366f1;
+  background: rgba(99,102,241,0.08);
   border-radius: 0.5rem;
-  text-align: center;
   text-decoration: none;
+  transition: background-color 0.2s ease;
 }
+
+.mobile-menu__highlight:hover { background-color: rgba(99,102,241,0.12); }
 
 /* =============================================
    FOOTER
@@ -793,7 +811,7 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 
 .hero__content {
   position: relative;
-  padding: 4rem 0;
+  padding: 2.5rem 0;
   text-align: center;
   max-width: 48rem;
   margin: 0 auto;
@@ -801,11 +819,11 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
 }
 
 @media (min-width: 640px) {
-  .hero__content { padding: 6rem 0; }
+  .hero__content { padding: 4rem 0; }
 }
 
 @media (min-width: 1024px) {
-  .hero__content { padding: 8rem 0; }
+  .hero__content { padding: 5rem 0; }
 }
 
 .hero__badge {
@@ -1784,6 +1802,7 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .auth-header__logo-img {
   width: 3rem;
   height: 3rem;
+  border-radius: 0.5rem;
   object-fit: contain;
 }
 
