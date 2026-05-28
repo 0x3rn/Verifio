@@ -15,7 +15,7 @@ export function Footer() {
               <span className="footer__brand-name">Verifio</span>
             </Link>
             <p className="footer__brand-desc">
-              Reliable OTP and phone verification platform. SMS, voice calls, and rental numbers for all your verification needs. Powered by SMSpool.
+              Reliable OTP and phone verification platform. SMS, voice calls, and rental numbers for all your verification needs.
             </p>
           </div>
 
