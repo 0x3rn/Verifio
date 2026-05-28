@@ -286,7 +286,7 @@ export default function Home() {
               </div>
               <h3 className="feature-card__title">One-Time Verification</h3>
               <p className="feature-card__desc">
-                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications. Starting at just $1.60 per verification with delivery in under 30 seconds across 100+ countries and 50+ services.
+                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications.
               </p>
               <ul className="pricing-card__features">
                 <li className="pricing-card__feature">
@@ -310,7 +310,7 @@ export default function Home() {
               <div className="payment-methods">
                 <h4 className="payment-methods__title">We Accept</h4>
                 <p className="payment-methods__desc">
-                  <strong>Debit/Credit Cards</strong> and <strong>Cryptocurrency</strong>: Bitcoin (BTC), Ethereum (ETH: Arbitrum, Optimism, Base), USDT & USDC (TRC-20, Solana, Polygon, BSC, Arbitrum), Litecoin (LTC), Monero (XMR), Dogecoin (DOGE), Tron (TRX)
+                  <strong>Debit/Credit Cards</strong> and <strong>Cryptocurrency</strong>: Bitcoin (BTC), Ethereum (Arbitrum, Optimism, Base), USDT & USDC (TRC-20, Solana, Polygon, BSC, Arbitrum), Litecoin (LTC), Monero (XMR), Dogecoin (DOGE), Tron (TRX)
                 </p>
               </div>
 
