@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShieldIcon } from '@/components/Icons';
+import React from 'react';
 
 export function Footer() {
   return (
@@ -11,9 +11,7 @@ export function Footer() {
           {/* Brand */}
           <div className="footer__brand">
             <Link href="/" className="footer__brand-logo">
-              <div className="footer__brand-icon">
-                <ShieldIcon className="icon-md text-white" />
-              </div>
+              <img src="/logo.png" alt="Verifio" className="footer__brand-img" />
               <span className="footer__brand-name">Verifio</span>
             </Link>
             <p className="footer__brand-desc">

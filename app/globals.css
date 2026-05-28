@@ -311,19 +311,15 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
   .navbar__logo { justify-self: start; }
 }
 
-.navbar__logo-icon {
+.navbar__logo-img {
   width: 2.25rem;
   height: 2.25rem;
-  background-color: #4f46e5;
   border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(99,102,241,0.1);
+  object-fit: contain;
   transition: transform 0.3s ease;
 }
 
-.navbar__logo:hover .navbar__logo-icon { transform: scale(1.05); }
+.navbar__logo:hover .navbar__logo-img { transform: scale(1.05); }
 
 .navbar__logo-text {
   font-size: 1.25rem;
@@ -670,14 +666,11 @@ body, .navbar, .navbar--scrolled, .navbar__inner,
   text-decoration: none;
 }
 
-.footer__brand-icon {
+.footer__brand-img {
   width: 2rem;
   height: 2rem;
-  background-color: #4f46e5;
   border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
 }
 
 .footer__brand-name {
@@ -1788,15 +1781,10 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   .auth-header__logo { margin-bottom: 1.5rem; }
 }
 
-.auth-header__logo-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  background-color: #4f46e5;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(99,102,241,0.1);
+.auth-header__logo-img {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
 }
 
 .auth-header__title {

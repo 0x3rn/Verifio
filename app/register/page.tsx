@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldIcon, SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
+import { SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -53,9 +53,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-header">
           <Link href="/" className="auth-header__logo">
-            <div className="auth-header__logo-icon">
-              <ShieldIcon className="icon-lg text-white" />
-            </div>
+            <img src="/logo.png" alt="Verifio" className="auth-header__logo-img" />
           </Link>
           <h1 className="auth-header__title">Create Account</h1>
           <p className="auth-header__subtitle">Start verifying in less than a minute.</p>

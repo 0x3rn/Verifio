@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   description:
     "Verifio is a complete OTP verification platform supporting SMS verification, voice calls, and rental phone numbers for all major services. Powered by SMSpool.",
   keywords: ["OTP", "verification", "SMS", "voice", "rental numbers", "phone verification"],
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
   openGraph: {
     title: "Verifio — OTP & Phone Verification Platform",
     description:

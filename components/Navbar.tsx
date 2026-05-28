@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
-import { SunIcon, MoonIcon, ShieldIcon, HomeIcon, ClipboardIcon, PhoneIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
+import { SunIcon, MoonIcon, HomeIcon, ClipboardIcon, PhoneIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
@@ -65,9 +65,7 @@ export function Navbar() {
         <div className="navbar__inner">
           {/* Logo */}
           <Link href="/" className="navbar__logo">
-            <div className="navbar__logo-icon">
-              <ShieldIcon className="icon-lg text-white" />
-            </div>
+            <img src="/logo.png" alt="Verifio" className="navbar__logo-img" />
             <span className="navbar__logo-text">Verifio</span>
           </Link>
 
