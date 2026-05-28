@@ -25,6 +25,7 @@ const tabIcons: Record<string, React.ReactNode> = {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
+  const [pricingTab, setPricingTab] = useState<'once' | 'rental'>('once');
 
   return (
     <div className="smooth-bg">
@@ -114,7 +115,7 @@ export default function Home() {
                   {[
                     { title: 'Instant Delivery', desc: 'Most codes arrive within 30 seconds' },
                     { title: 'Global Coverage', desc: 'Numbers from 100+ countries worldwide' },
-                    { title: 'Low Cost', desc: 'Starting at just $0.10 per verification' },
+                    { title: 'Low Cost', desc: 'Starting at just $1.60 per verification' },
                   ].map((item) => (
                     <div key={item.title} className="feature-item">
                       <div className="feature-item__title">{item.title}</div>
@@ -251,60 +252,132 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing / Verification Options */}
       <section id="pricing" className="section">
         <div className="page-container">
           <div className="section-header">
-            <h2 className="section-header-title">Rental Plans</h2>
-            <p className="section-header-subtitle">Rent a phone number for as long as you need. Longer plans save you more.</p>
+            <h2 className="section-header-title">Verification Options</h2>
+            <p className="section-header-subtitle">Choose between one-time verification or long-term rental numbers.</p>
           </div>
 
-          <div className="pricing-grid">
-            {Object.entries(PLAN_DURATIONS).map(([key, plan]) => {
-              const isPopular = key === 'monthly';
-              const basePrices: Record<string, number> = { weekly: 4.99, monthly: 15.99, quarterly: 39.99, biannual: 69.99 };
-              const basePrice = basePrices[key] || 0;
-              const discountedPrice = (basePrice * (1 - plan.discount / 100)).toFixed(2);
+          {/* Pricing type tabs */}
+          <div className="tabs">
+            <div className="tabs__inner">
+              {[
+                { key: 'once' as const, label: 'One-Time Verification' },
+                { key: 'rental' as const, label: 'Rental Plans' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setPricingTab(tab.key)}
+                  className={`tab ${pricingTab === tab.key ? 'tab--active' : ''}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              return (
-                <div key={key} className={`pricing-card ${isPopular ? 'pricing-card--popular' : ''}`}>
-                  {isPopular && (
-                    <div className="pricing-card__badge">Most Popular</div>
-                  )}
-                  <div className="pricing-card__inner">
-                    <h3 className="pricing-card__title">{plan.label}</h3>
-                    <p className="pricing-card__subtitle">{plan.days} days</p>
-                    <div className="pricing-card__price">
-                      <span className="pricing-card__price-value">${discountedPrice}</span>
-                      {plan.discount > 0 && (
-                        <span className="pricing-card__price-original">${basePrice}</span>
-                      )}
-                    </div>
-                    {plan.discount > 0 && (
-                      <div className="pricing-card__save-badge">Save {plan.discount}%</div>
-                    )}
-                    <ul className="pricing-card__features">
-                      <li className="pricing-card__feature">
-                        <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Dedicated phone number
-                      </li>
-                      <li className="pricing-card__feature">
-                        <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Unlimited SMS reception
-                      </li>
-                      <li className="pricing-card__feature">
-                        <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> 24/7 availability
-                      </li>
-                    </ul>
-                    <Link
-                      href="/register"
-                      className={`pricing-card__cta ${isPopular ? 'pricing-card__cta--primary' : 'pricing-card__cta--secondary'}`}
-                    >
-                      Get Started
-                    </Link>
-                  </div>
+          {/* One-Time Verification Card */}
+          {pricingTab === 'once' && (
+            <div className="feature-card animate-fade-in">
+              <div className="feature-card__icon">
+                <TargetIcon className="icon-xl text-indigo" />
+              </div>
+              <h3 className="feature-card__title">One-Time Verification</h3>
+              <p className="feature-card__desc">
+                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications.
+              </p>
+              <div className="hero-stats">
+                <div className="hero-stat">
+                  <div className="hero-stat__value">$1.60</div>
+                  <div className="hero-stat__label">Starting at</div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="hero-stat">
+                  <div className="hero-stat__value">{'<30s'}</div>
+                  <div className="hero-stat__label">Delivery time</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="hero-stat__value">100+</div>
+                  <div className="hero-stat__label">Countries</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="hero-stat__value">50+</div>
+                  <div className="hero-stat__label">Services</div>
+                </div>
+              </div>
+              <ul className="pricing-card__features" style={{ marginBottom: '0', marginTop: '1.25rem', textAlign: 'center' }}>
+                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Numbers are used once and discarded after each use
+                </li>
+                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Verification cost starts at just $1.60
+                </li>
+                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Most codes arrive within 10–60 seconds
+                </li>
+                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Pay only for what you use — no commitment
+                </li>
+                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Available via SMS or voice call
+                </li>
+              </ul>
+              <div className="hero__actions" style={{ marginTop: '1.5rem' }}>
+                <Link href="/register" className="btn-primary">Get Started</Link>
+              </div>
+            </div>
+          )}
+
+          {/* Rental Plans */}
+          {pricingTab === 'rental' && (
+            <div className="pricing-grid animate-fade-in">
+              {Object.entries(PLAN_DURATIONS).map(([key, plan]) => {
+                const isPopular = key === 'monthly';
+                const basePrices: Record<string, number> = { weekly: 4.99, monthly: 15.99, quarterly: 39.99, biannual: 69.99 };
+                const basePrice = basePrices[key] || 0;
+                const discountedPrice = (basePrice * (1 - plan.discount / 100)).toFixed(2);
+
+                return (
+                  <div key={key} className={`pricing-card ${isPopular ? 'pricing-card--popular' : ''}`}>
+                    {isPopular && (
+                      <div className="pricing-card__badge">Most Popular</div>
+                    )}
+                    <div className="pricing-card__inner">
+                      <h3 className="pricing-card__title">{plan.label}</h3>
+                      <p className="pricing-card__subtitle">{plan.days} days</p>
+                      <div className="pricing-card__price">
+                        <span className="pricing-card__price-value">${discountedPrice}</span>
+                        {plan.discount > 0 && (
+                          <span className="pricing-card__price-original">${basePrice}</span>
+                        )}
+                      </div>
+                      {plan.discount > 0 && (
+                        <div className="pricing-card__save-badge">Save {plan.discount}%</div>
+                      )}
+                      <ul className="pricing-card__features">
+                        <li className="pricing-card__feature">
+                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Dedicated phone number
+                        </li>
+                        <li className="pricing-card__feature">
+                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Unlimited SMS reception
+                        </li>
+                        <li className="pricing-card__feature">
+                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> 24/7 availability
+                        </li>
+                      </ul>
+                      <Link
+                        href="/register"
+                        className={`pricing-card__cta ${isPopular ? 'pricing-card__cta--primary' : 'pricing-card__cta--secondary'}`}
+                      >
+                        Get Started
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -319,9 +392,9 @@ export default function Home() {
             {[
               { q: 'How long does it take to receive a verification code?', a: 'Most SMS codes arrive within 10-60 seconds. Voice codes take 30-90 seconds. Rental numbers receive codes instantly once the rental is active.' },
               { q: 'Which services are supported?', a: 'We support over 50 platforms including Google, WhatsApp, Telegram, Facebook, Instagram, X, Discord, Microsoft, Apple, Amazon, Tinder, Snapchat, and many more.' },
-              { q: 'Can I cancel a rental number early?', a: 'Yes, you can cancel a rental at any time from your dashboard. Refunds depend on the remaining rental period.' },
-              { q: 'What payment methods do you accept?', a: 'We accept credit/debit cards and cryptocurrency. Our platform uses SMSpool for number provisioning — you add funds through SMSpool directly.' },
-              { q: 'Are the phone numbers reusable?', a: 'SMS verification numbers are one-time use. Rental numbers are exclusively yours for the duration of the rental period and can receive multiple codes.' },
+              { q: 'Can I cancel a rental number early?', a: 'Yes, you can cancel a rental before a number is issued to you. However, after a number is issued to you, you cannot cancel the rental.' },
+              { q: 'What payment methods do you accept?', a: 'We accept credit/debit cards and cryptocurrency.' },
+              { q: 'Are the phone numbers reusable?', a: 'SMS verification numbers are one-time use but can be reused for up to 2 times using the resend option. Rental numbers are exclusively yours for the duration of the rental period and can receive multiple codes.' },
             ].map((faq, i) => (
               <details key={i} className="faq__item">
                 <summary className="faq__summary">
