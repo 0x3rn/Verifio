@@ -286,43 +286,34 @@ export default function Home() {
               </div>
               <h3 className="feature-card__title">One-Time Verification</h3>
               <p className="feature-card__desc">
-                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications.
+                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications. Starting at just $1.60 per verification with delivery in under 30 seconds across 100+ countries and 50+ services.
               </p>
-              <div className="hero-stats">
-                <div className="hero-stat">
-                  <div className="hero-stat__value">$1.60</div>
-                  <div className="hero-stat__label">Starting at</div>
-                </div>
-                <div className="hero-stat">
-                  <div className="hero-stat__value">{'<30s'}</div>
-                  <div className="hero-stat__label">Delivery time</div>
-                </div>
-                <div className="hero-stat">
-                  <div className="hero-stat__value">100+</div>
-                  <div className="hero-stat__label">Countries</div>
-                </div>
-                <div className="hero-stat">
-                  <div className="hero-stat__value">50+</div>
-                  <div className="hero-stat__label">Services</div>
-                </div>
-              </div>
-              <ul className="pricing-card__features" style={{ marginBottom: '0', marginTop: '1.25rem', textAlign: 'center' }}>
-                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+              <ul className="pricing-card__features">
+                <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Numbers are used once and discarded after each use
                 </li>
-                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Verification cost starts at just $1.60
                 </li>
-                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Most codes arrive within 10–60 seconds
                 </li>
-                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Pay only for what you use — no commitment
                 </li>
-                <li className="pricing-card__feature" style={{ justifyContent: 'center' }}>
+                <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Available via SMS or voice call
                 </li>
               </ul>
+
+              {/* Payment Methods */}
+              <div className="payment-methods">
+                <h4 className="payment-methods__title">We Accept</h4>
+                <p className="payment-methods__desc">
+                  <strong>Debit/Credit Cards</strong> and <strong>Cryptocurrency</strong>: Bitcoin (BTC), Ethereum (ETH: Arbitrum, Optimism, Base), USDT & USDC (TRC-20, Solana, Polygon, BSC, Arbitrum), Litecoin (LTC), Monero (XMR), Dogecoin (DOGE), Tron (TRX)
+                </p>
+              </div>
+
               <div className="hero__actions" style={{ marginTop: '1.5rem' }}>
                 <Link href="/register" className="btn-primary">Get Started</Link>
               </div>

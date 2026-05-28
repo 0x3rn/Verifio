@@ -1443,6 +1443,8 @@ body {
   padding: 1.25rem;
   background-color: var(--card-bg);
   transition: all 0.4s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (min-width: 640px) {
@@ -1469,7 +1471,12 @@ body {
   white-space: nowrap;
 }
 
-.pricing-card__inner { text-align: center; }
+.pricing-card__inner {
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 .pricing-card__title {
   font-size: 1rem;
@@ -1574,6 +1581,7 @@ body {
   text-align: center;
   text-decoration: none;
   transition: all 0.2s ease;
+  margin-top: auto;
 }
 
 .pricing-card__cta--primary {
@@ -1593,6 +1601,33 @@ body {
 
 .pricing-card__cta--secondary:hover {
   background-color: var(--surface-hover);
+}
+
+/* Payment Methods (One-Time Verification card) */
+.payment-methods {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--card-border);
+}
+
+.payment-methods__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.payment-methods__desc {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.payment-methods__desc strong {
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 /* ---- FAQ ---- */
