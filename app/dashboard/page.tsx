@@ -77,7 +77,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
   const [selectedService, setSelectedService] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
-  const [countryLoading, setCountryLoading] = useState(true);
   // Dynamic lists from SMSpool API (fall back to hardcoded if API fails)
   const [services, setServices] = useState<SelectableItem[]>(SUPPORTED_SERVICES);
   const [countries, setCountries] = useState<SelectableItem[]>(SUPPORTED_COUNTRIES.map(c => ({ id: c.code, name: c.name })));
@@ -167,24 +166,6 @@ export default function DashboardPage() {
       setHasIdentified(true);
     }
   }, [user, hasIdentified]);
-
-  // Auto-detect country from IP on mount
-  useEffect(() => {
-    const detectCountry = async () => {
-      try {
-        const res = await fetch('/api/geo');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.country) {
-            const isSupported = countries.some(c => c.id === data.country);
-            if (isSupported) setSelectedCountry(data.country);
-          }
-        }
-      } catch { /* silently fail, user can pick manually */ }
-      finally { setCountryLoading(false); }
-    };
-    if (!listsLoading) detectCountry();
-  }, [listsLoading, countries]);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) {
@@ -361,9 +342,7 @@ export default function DashboardPage() {
             <div className="selector-section">
               <label className="selector-section__label">
                 Select Country
-                {listsLoading && <span className="selector-section__loading"> — loading...</span>}
-                {countryLoading && !listsLoading && <span className="selector-section__loading"> — detecting your location...</span>}
-                {!countryLoading && !listsLoading && selectedCountry && <span className="selector-section__detected"> — {countries.find(c => c.id === selectedCountry)?.name} (auto-detected)</span>}
+                {selectedCountry && <span className="selector-section__detected"> — {countries.find(c => c.id === selectedCountry)?.name}</span>}
               </label>
               <div className="selector-grid">
                 {listsLoading && <div className="selector-empty">Loading...</div>}
@@ -482,42 +461,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="sidebar">
-          <div className="sidebar-card">
-            <h3 className="sidebar-card__title">Quick Links</h3>
-            <div className="sidebar-links">
-              <Link href="/dashboard/orders" className="sidebar-link">
-                <ClipboardIcon className="icon-md sidebar-link__icon" /> Order History
-              </Link>
-              <Link href="/dashboard/rentals" className="sidebar-link">
-                <PhoneIcon className="icon-md sidebar-link__icon" /> My Rentals
-              </Link>
-            </div>
-          </div>
-
-          <div className="sidebar-card">
-            <h3 className="sidebar-card__title">Account</h3>
-            <div className="account-info">
-              <div className="account-info__row">
-                <span className="account-info__label">Username</span>
-                <span className="account-info__value">{user.username}</span>
-              </div>
-              <div className="account-info__row">
-                <span className="account-info__label">Email</span>
-                <span className="account-info__value">{user.email || '—'}</span>
-              </div>
-              <div className="account-info__row">
-                <span className="account-info__label">Balance</span>
-                <span className="account-info__value account-info__value--bold">${user.balance.toFixed(2)}</span>
-              </div>
-              <div className="account-info__row">
-                <span className="account-info__label">Member since</span>
-                <span className="account-info__value">{new Date(user.createdAt).toLocaleDateString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Service Picker Modal */}

@@ -493,6 +493,11 @@ body {
   font-size: 0.875rem;
   color: var(--foreground);
   text-decoration: none;
+  background: none;
+  border: none;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
@@ -3515,6 +3520,8 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   backdrop-filter: blur(4px);
   animation: fadeIn 0.15s ease-out;
   padding: 1rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .picker-modal {
