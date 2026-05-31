@@ -2,16 +2,8 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-// Prisma v7 with inline schema requires explicit datasource URL at runtime
 const createPrismaClient = () => {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error('DATABASE_URL is not set. PrismaClient cannot connect to the database.');
-  }
-  // Prisma v7 accepts datasourceUrl at runtime even though v7 types don't expose it
-  return new (PrismaClient as any)({
-    datasourceUrl: url,
-  });
+  return new PrismaClient();
 };
 
 export const prisma = globalForPrisma.prisma || createPrismaClient();
