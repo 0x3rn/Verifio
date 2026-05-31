@@ -1,6 +1,8 @@
 const SMSPOOL_BASE_URL = process.env.SMSPOOL_BASE_URL || 'https://api.smspool.net';
 const SMSPOOL_API_KEY = process.env.SMSPOOL_API_KEY || '';
 
+// ---- v1 API helper (for ordering operations — uses key= query param auth) ----
+
 interface SMSPoolRequestOptions {
   method?: string;
   body?: Record<string, unknown>;
@@ -51,6 +53,70 @@ async function smspoolRequest<T>(
   return response.json();
 }
 
+// ---- v2 API helpers (for listing endpoints — uses Bearer token auth) ----
+
+interface SMSPoolCountry {
+  ID: number;
+  name: string;
+  short_name: string;
+  code: string;
+  iso: number;
+  price?: number;
+}
+
+interface SMSPoolService {
+  ID: number;
+  name: string;
+}
+
+// Fetch all available countries from SMSpool v2 API
+// Cached for 1 hour since countries rarely change
+export async function getCountries(): Promise<SMSPoolCountry[]> {
+  try {
+    const response = await fetch(`${SMSPOOL_BASE_URL}/country/retrieve_all`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${SMSPOOL_API_KEY}`,
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 3600 },
+    });
+
+    if (!response.ok) throw new Error(`Failed to fetch countries: ${response.status}`);
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('SMSpool Countries Error:', error);
+    return [];
+  }
+}
+
+// Fetch all available services from SMSpool v2 API
+// Cached for 1 hour since services rarely change
+export async function getServices(): Promise<SMSPoolService[]> {
+  try {
+    const response = await fetch(`${SMSPOOL_BASE_URL}/service/retrieve_all`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${SMSPOOL_API_KEY}`,
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 3600 },
+    });
+
+    if (!response.ok) throw new Error(`Failed to fetch services: ${response.status}`);
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('SMSpool Services Error:', error);
+    return [];
+  }
+}
+
+// ---- Ordering operations (v1 API — uses key= query param) ----
+
 // Get account balance
 export async function getBalance() {
   const data = await smspoolRequest<{ success: number; balance: number }>('request/balance');
@@ -58,28 +124,6 @@ export async function getBalance() {
     success: data.success === 1,
     balance: data.balance,
   };
-}
-
-// Get available countries
-export async function getCountries() {
-  const data = await smspoolRequest<Record<string, {
-    ID: number;
-    name: string;
-    short_name: string;
-    code: string;
-    iso: number;
-    price: number;
-  }>>('request/countries');
-  return data;
-}
-
-// Get available services for a country
-export async function getServices(country: string) {
-  const data = await smspoolRequest<Record<string, { ID: number; name: string }>>(
-    'request/services',
-    { body: { country } }
-  );
-  return data;
 }
 
 // Order a new phone number for SMS verification

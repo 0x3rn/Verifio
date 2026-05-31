@@ -8,6 +8,11 @@ import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/t
 import type { User, PlanTier } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
 
+interface SelectableItem {
+  id: string;
+  name: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -17,6 +22,10 @@ export default function DashboardPage() {
   const [selectedService, setSelectedService] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [countryLoading, setCountryLoading] = useState(true);
+  // Dynamic lists from SMSpool API (fall back to hardcoded if API fails)
+  const [services, setServices] = useState<SelectableItem[]>(SUPPORTED_SERVICES);
+  const [countries, setCountries] = useState<SelectableItem[]>(SUPPORTED_COUNTRIES.map(c => ({ id: c.code, name: c.name })));
+  const [listsLoading, setListsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>('monthly');
   const [orderResult, setOrderResult] = useState<{
     id: string; phoneNumber: string; service: string; country: string; status: string; cost: number; expiresAt: string;
@@ -61,6 +70,33 @@ export default function DashboardPage() {
     };
     fetchUser();
   }, [router]);
+
+  // Fetch dynamic services & countries from SMSpool API
+  useEffect(() => {
+    const fetchLists = async () => {
+      try {
+        const res = await fetch('/api/services');
+        if (res.ok) {
+          const data = await res.json();
+          // Map API data to SelectableItem format (use name as ID for ordering API compatibility)
+          if (Array.isArray(data.services)) {
+            setServices(data.services.map((s: { ID: number; name: string }) => ({
+              id: s.name.toLowerCase(),
+              name: s.name,
+            })));
+          }
+          if (Array.isArray(data.countries)) {
+            setCountries(data.countries.map((c: { ID: number; code: string; name: string; short_name: string }) => ({
+              id: c.code || c.short_name,
+              name: c.name,
+            })));
+          }
+        }
+      } catch { /* fall back to hardcoded lists */ }
+      finally { setListsLoading(false); }
+    };
+    fetchLists();
+  }, []);
 
   // PostHog: identify user once when dashboard loads
   useEffect(() => {
@@ -244,7 +280,8 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="selector-grid">
-                {SUPPORTED_SERVICES.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).map((svc) => (
+                {listsLoading && <div className="selector-empty">Loading services...</div>}
+                {!listsLoading && services.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).map((svc) => (
                   <button
                     key={svc.id}
                     onClick={() => setSelectedService(svc.id)}
@@ -253,7 +290,7 @@ export default function DashboardPage() {
                     {svc.name}
                   </button>
                 ))}
-                {SUPPORTED_SERVICES.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
+                {!listsLoading && services.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
                   <div className="selector-empty">No services match your search.</div>
                 )}
               </div>
@@ -263,8 +300,9 @@ export default function DashboardPage() {
             <div className="selector-section">
               <label className="selector-section__label">
                 Select Country
-                {countryLoading && <span className="selector-section__loading"> — detecting your location...</span>}
-                {!countryLoading && selectedCountry && <span className="selector-section__detected"> (auto-detected)</span>}
+                {listsLoading && <span className="selector-section__loading"> — loading...</span>}
+                {countryLoading && !listsLoading && <span className="selector-section__loading"> — detecting your location...</span>}
+                {!countryLoading && !listsLoading && selectedCountry && <span className="selector-section__detected"> (auto-detected)</span>}
               </label>
               <div className="selector-section__search">
                 <input
@@ -276,16 +314,17 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="selector-grid">
-                {SUPPORTED_COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map((c) => (
+                {listsLoading && <div className="selector-empty">Loading countries...</div>}
+                {!listsLoading && countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map((c) => (
                   <button
-                    key={c.code}
-                    onClick={() => setSelectedCountry(c.code)}
-                    className={`selector-btn ${selectedCountry === c.code ? 'selector-btn--active' : ''}`}
+                    key={c.id}
+                    onClick={() => setSelectedCountry(c.id)}
+                    className={`selector-btn ${selectedCountry === c.id ? 'selector-btn--active' : ''}`}
                   >
                     {c.name}
                   </button>
                 ))}
-                {SUPPORTED_COUNTRIES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
+                {!listsLoading && countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
                   <div className="selector-empty">No countries match your search.</div>
                 )}
               </div>
