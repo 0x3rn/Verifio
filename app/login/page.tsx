@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
+import { identifyUser, trackEvent, resetUser } from '@/lib/posthog';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,6 +31,18 @@ export default function LoginPage() {
         setError(data.error || 'Login failed. Please try again.');
         setLoading(false);
         return;
+      }
+
+      // PostHog: identify user & track login
+      if (data.user) {
+        identifyUser(data.user.id, {
+          username: data.user.username,
+          email: data.user.email || undefined,
+        });
+        trackEvent('User Logged In', {
+          method: 'password',
+          username: data.user.username,
+        });
       }
 
       router.push('/dashboard');

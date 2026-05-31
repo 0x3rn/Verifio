@@ -4,6 +4,7 @@ import NextTopLoader from 'nextjs-toploader';
 import { ThemeProvider } from "./providers";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { PageViewTracker } from "@/components/PageViewTracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -77,6 +78,7 @@ export default function RootLayout({
           shadow="0 0 10px #6366f1,0 0 5px #6366f1"
         />
         <ThemeProvider>
+          <PageViewTracker />
           <div className="body-wrapper">
             <Navbar />
             <main className="main-content">{children}</main>

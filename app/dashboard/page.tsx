@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation';
 import { SpinnerIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, ChartIcon, ClockIcon, RefreshIcon, ArrowLeftIcon } from '@/components/Icons';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier } from '@/lib/types';
+import { identifyUser, trackEvent } from '@/lib/posthog';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasIdentified, setHasIdentified] = useState(false);
   const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
   const [selectedService, setSelectedService] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -60,6 +62,17 @@ export default function DashboardPage() {
     fetchUser();
   }, [router]);
 
+  // PostHog: identify user once when dashboard loads
+  useEffect(() => {
+    if (user && !hasIdentified) {
+      identifyUser(user.id, {
+        username: user.username,
+        email: user.email || undefined,
+      });
+      setHasIdentified(true);
+    }
+  }, [user, hasIdentified]);
+
   // Auto-detect country from IP on mount
   useEffect(() => {
     const detectCountry = async () => {
@@ -100,6 +113,15 @@ export default function DashboardPage() {
       if (!res.ok) { setStatusMessage(data.error || 'Failed to order.'); setWorking(false); return; }
       setOrderResult(data.order);
       setStatusMessage(`Number acquired. Use ${data.order.phoneNumber} to request your code.`);
+
+      // PostHog: track verification order
+      trackEvent('Verification Ordered', {
+        type: activeTab,
+        service: selectedService,
+        country: selectedCountry,
+        cost: data.order.cost,
+        plan: activeTab === 'rental' ? selectedPlan : undefined,
+      });
     } catch { setStatusMessage('An unexpected error occurred.'); }
     finally { setWorking(false); }
   }, [selectedService, selectedCountry, selectedPlan, activeTab]);
@@ -113,7 +135,16 @@ export default function DashboardPage() {
       const res = await fetch(`${endpoint}?orderId=${orderResult.id}`);
       const data = await res.json();
       if (!res.ok) { setStatusMessage(data.error || 'Failed to check code.'); setCheckingCode(false); return; }
-      if (data.success && data.code) { setVerificationCode(data.code); setStatusMessage('Verification code received!'); }
+      if (data.success && data.code) {
+        setVerificationCode(data.code);
+        setStatusMessage('Verification code received!');
+        // PostHog: track code received
+        trackEvent('Verification Code Received', {
+          type: activeTab,
+          service: orderResult.service,
+          country: orderResult.country,
+        });
+      }
       else if (data.status === 'expired') { setStatusMessage('Order expired. Create a new order.'); setOrderResult(null); }
       else { setStatusMessage('Code not yet received. Keep waiting...'); }
     } catch { setStatusMessage('Failed to check for code.'); }

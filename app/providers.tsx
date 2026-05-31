@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { ThemeMode } from '@/lib/types';
+import { initPostHog } from '@/lib/posthog';
+
+// ---- Theme Context ----
 
 interface ThemeContextValue {
   theme: ThemeMode;
@@ -19,7 +22,7 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+function ThemeContextProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -53,5 +56,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
+  );
+}
+
+// ---- PostHog Provider ----
+
+function PostHogProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    initPostHog();
+  }, []);
+
+  return <>{children}</>;
+}
+
+// ---- Combined Provider ----
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <PostHogProvider>
+      <ThemeContextProvider>
+        {children}
+      </ThemeContextProvider>
+    </PostHogProvider>
   );
 }

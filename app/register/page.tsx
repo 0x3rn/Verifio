@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
+import { identifyUser, trackEvent } from '@/lib/posthog';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,6 +41,20 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
+
+      // PostHog: identify user & track signup
+      if (data.user) {
+        identifyUser(data.user.id, {
+          username: data.user.username,
+          email: data.user.email || undefined,
+        });
+        trackEvent('User Signed Up', {
+          method: 'password',
+          username: data.user.username,
+          provided_email: !!data.user.email,
+        });
+      }
+
       router.push('/dashboard');
       router.refresh();
     } catch {
