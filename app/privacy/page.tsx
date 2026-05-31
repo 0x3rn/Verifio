@@ -67,7 +67,7 @@ export default function PrivacyPage() {
           We do not sell, trade, or rent your personal information to third parties. We may share information in the following circumstances:
         </p>
         <ul className="legal-page__list">
-          <li><strong>Service Providers:</strong> We engage SMSpool and other third-party services to facilitate phone number provisioning. These providers receive only the information necessary to complete the verification service you requested.</li>
+          <li><strong>Service Providers:</strong> We engage third-party phone number provisioning services to facilitate verification services. These providers receive only the information necessary to complete the verification service you requested.</li>
           <li><strong>Legal Requirements:</strong> We may disclose information if required by law, subpoena, or other legal process.</li>
           <li><strong>Protection of Rights:</strong> We may disclose information to protect the rights, property, or safety of Verifio, our users, or others.</li>
         </ul>

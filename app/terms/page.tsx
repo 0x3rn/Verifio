@@ -18,7 +18,7 @@ export default function TermsPage() {
           <li><strong>"Verifio"</strong> — The OTP and phone verification platform operated by us</li>
           <li><strong>"Service"</strong> — The SMS verification, voice verification, and phone number rental services provided through our platform</li>
           <li><strong>"User"</strong> — Any individual or entity that creates an account and uses our service</li>
-          <li><strong>"SMSpool"</strong> — The third-party API provider used to provision phone numbers</li>
+          <li><strong>"Provider"</strong> — Third-party phone number provisioning services used by our platform</li>
         </ul>
 
         <h2 className="legal-page__heading">2. Account Registration</h2>
@@ -35,15 +35,15 @@ export default function TermsPage() {
         </p>
         <ul className="legal-page__list">
           <li>You will not use our service for any illegal, fraudulent, or unauthorized purpose</li>
-          <li>You will not attempt to abuse, exploit, or circumvent our systems or the SMSpool API</li>
+          <li>You will not attempt to abuse, exploit, or circumvent our systems or the underlying phone number provisioning APIs</li>
           <li>You are solely responsible for how you use the phone numbers and verification codes received</li>
           <li>Verifio is not responsible for the services you verify against (e.g., Google, WhatsApp, Telegram)</li>
-          <li>Phone numbers are provisioned by SMSpool and availability is subject to their API limitations</li>
+          <li>Phone numbers are provisioned by third-party providers and availability is subject to their respective limitations</li>
         </ul>
 
         <h2 className="legal-page__heading">4. Payments and Pricing</h2>
         <p className="legal-page__text">
-          All verification services are priced according to the SMSpool API pricing model. Prices are subject to change based on SMSpool's rate adjustments. Your account balance reflects the funds available for verification orders and rentals.
+          All verification services are priced according to prevailing rates from our phone number providers. Prices are subject to change based on provider rate adjustments. Your account balance reflects the funds available for verification orders and rentals.
         </p>
         <ul className="legal-page__list">
           <li>SMS verification orders are charged per use at the prevailing rate</li>
@@ -75,7 +75,7 @@ export default function TermsPage() {
         </p>
         <ul className="legal-page__list">
           <li>Maintenance or updates</li>
-          <li>SMSpool API downtime or rate changes</li>
+          <li>Third-party provider API downtime or rate changes</li>
           <li>Network or infrastructure issues</li>
           <li>Events beyond our reasonable control</li>
         </ul>
@@ -88,7 +88,7 @@ export default function TermsPage() {
           <li>Loss of profits, data, or business</li>
           <li>Service interruptions or unavailability</li>
           <li>Delayed or failed verification code delivery</li>
-          <li>Actions taken by SMSpool or third-party services</li>
+          <li>Actions taken by third-party providers or services</li>
           <li>Any unauthorized access to or use of our servers or your personal information</li>
         </ul>
 
