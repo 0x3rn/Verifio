@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, MailIcon, LockIcon } from '@/components/Icons';
+import { SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -44,9 +44,6 @@ export default function LoginPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <Link href="/" className="auth-header__logo">
-            <img src="/logo.png" alt="Verifio" className="auth-header__logo-img" />
-          </Link>
           <h1 className="auth-header__title">Welcome Back</h1>
           <p className="auth-header__subtitle">Sign in to your Verifio account to continue.</p>
         </div>
@@ -56,18 +53,18 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div>
-              <label htmlFor="email" className="form-field__label">Email Address</label>
+              <label htmlFor="username" className="form-field__label">Username</label>
               <div className="form-field__input-wrapper">
                 <div className="form-field__icon">
-                  <MailIcon className="icon-md" />
+                  <UserIcon className="icon-md" />
                 </div>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
-                  placeholder="you@example.com"
+                  placeholder="johndoe123"
                   className="form-field__input"
                 />
               </div>
@@ -107,6 +104,9 @@ export default function LoginPage() {
             <p className="auth-footer__text">
               Don't have an account?{' '}
               <Link href="/register" className="auth-footer__link">Create one</Link>
+            </p>
+            <p className="auth-footer__text" style={{ marginTop: '0.5rem' }}>
+              <Link href="/" className="auth-footer__link">← Back to Home</Link>
             </p>
           </div>
         </div>

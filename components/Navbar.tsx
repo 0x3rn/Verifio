@@ -10,11 +10,16 @@ import type { User } from '@/lib/types';
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Don't render navbar on auth pages — keep them clean
+  if (isAuthPage) return null;
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -105,15 +110,15 @@ export function Navbar() {
                   className="user-menu__trigger"
                 >
                   <div className="user-menu__avatar">
-                    {user.name.charAt(0).toUpperCase()}
+                    {user.username.charAt(0).toUpperCase()}
                   </div>
-                  <span className="user-menu__name">{user.name.split(' ')[0]}</span>
+                  <span className="user-menu__name">{user.username}</span>
                 </button>
                 {userMenuOpen && (
                   <div className="user-menu__dropdown">
                     <div className="user-menu__dropdown-header">
-                      <p className="user-menu__dropdown-name">{user.name}</p>
-                      <p className="user-menu__dropdown-email">{user.email}</p>
+                      <p className="user-menu__dropdown-name">{user.username}</p>
+                      <p className="user-menu__dropdown-email">{user.email || ''}</p>
                     </div>
                     <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <HomeIcon className="icon-md" /> Dashboard

@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String?  @unique
+  password  String   // Store hashed password here
+  balance   Float    @default(0.00) // Their Verifio wallet balance
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  rentals   Rental[]
+}
+
+model Order {
+  id             String    @id @default(cuid())
+  userId         String
+  service        String
+  country        String
+  phoneNumber    String
+  code           String?
+  status         String
+  type           String
+  cost           Float
+  smspoolOrderId String
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+  expiresAt      DateTime
+
+  user           User      @relation(fields: [userId], references: [id])
+}
+
+model Rental {
+  id              String    @id @default(cuid())
+  userId          String
+  phoneNumber     String
+  country         String
+  service         String
+  status          String
+  plan            String
+  cost            Float
+  smspoolRentalId String
+  startedAt       DateTime  @default(now())
+  expiresAt       DateTime
+  renewedAt       DateTime?
+
+  user            User      @relation(fields: [userId], references: [id])
+}

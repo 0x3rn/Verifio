@@ -4,11 +4,11 @@ import { registerUser, setAuthCookie } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name } = body;
+    const { username, password, email } = body;
 
-    if (!email || !password || !name) {
+    if (!username || !password) {
       return NextResponse.json(
-        { error: 'Email, password, and name are required.' },
+        { error: 'Username and password are required.' },
         { status: 400 }
       );
     }
@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
         { error: 'Please provide a valid email address.' },
         { status: 400 }
       );
     }
 
-    const result = await registerUser(email, password, name);
+    const result = await registerUser(username, password, email);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 409 });
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
     await setAuthCookie(result.token!);
 
     return NextResponse.json({ user: result.user, token: result.token }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('Registration API error:', err);
     return NextResponse.json(
       { error: 'An unexpected error occurred. Please try again.' },
       { status: 500 }

@@ -296,7 +296,7 @@ export default function Home() {
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Verification cost starts at just $1.60
                 </li>
                 <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Most codes arrive within 10–60 seconds
+                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Most codes arrive within 30 seconds
                 </li>
                 <li className="pricing-card__feature">
                   <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Pay only for what you use — no commitment

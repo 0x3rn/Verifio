@@ -1,34 +1,10 @@
 import { cookies } from 'next/headers';
-import type { User, StoredUser } from './types';
+import { SignJWT, jwtVerify } from 'jose';
+import { prisma } from '@/lib/db';
+import type { User } from './types';
 
 const TOKEN_COOKIE = 'verifio_token';
-
-// Simple in-memory user store (in production, use a real database)
-const getUsers = (): Map<string, StoredUser> => {
-  if (typeof globalThis !== 'undefined') {
-    if (!(globalThis as Record<string, unknown>).__verifio_users) {
-      (globalThis as Record<string, unknown>).__verifio_users = new Map<string, StoredUser>();
-    }
-    return (globalThis as Record<string, unknown>).__verifio_users as Map<string, StoredUser>;
-  }
-  return new Map<string, StoredUser>();
-};
-
-// Simple token-based auth using Base64 (in production, use JWT)
-function encodeToken(payload: { userId: string; email: string }): string {
-  const data = JSON.stringify({ ...payload, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 });
-  return Buffer.from(data).toString('base64');
-}
-
-function decodeToken(token: string): { userId: string; email: string; exp: number } | null {
-  try {
-    const data = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-    if (data.exp < Date.now()) return null;
-    return data;
-  } catch {
-    return null;
-  }
-}
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'verifio-super-secret-key-12345');
 
 // Hash password
 async function hashPassword(password: string): Promise<string> {
@@ -42,91 +18,108 @@ async function verifyPassword(password: string, hashedPassword: string): Promise
   return hash === hashedPassword;
 }
 
-// Generate unique ID
-function generateId(): string {
-  return `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+// JWT Token encode
+export async function encodeToken(payload: { userId: string; username: string }): Promise<string> {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(JWT_SECRET);
+}
+
+// JWT Token decode
+export async function decodeToken(token: string): Promise<{ userId: string; username: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return payload as { userId: string; username: string };
+  } catch {
+    return null;
+  }
 }
 
 // Register a new user
 export async function registerUser(
-  email: string,
+  username: string,
   password: string,
-  name: string
+  email?: string
 ): Promise<{ success: boolean; token?: string; user?: User; error?: string }> {
-  const users = getUsers();
-
-  for (const user of users.values()) {
-    if (user.email === email) {
-      return { success: false, error: 'An account with this email already exists.' };
+  try {
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      return { success: false, error: 'An account with this username already exists.' };
     }
+
+    if (email) {
+      const existingEmail = await prisma.user.findUnique({ where: { email } });
+      if (existingEmail) {
+        return { success: false, error: 'An account with this email already exists.' };
+      }
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const dbUser = await prisma.user.create({
+      data: {
+        username,
+        email: email || undefined,
+        password: hashedPassword,
+        balance: 0,
+      },
+    });
+
+    const token = await encodeToken({ userId: dbUser.id, username: dbUser.username });
+
+    const user: User = {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email || undefined,
+      name: undefined,
+      balance: dbUser.balance,
+      createdAt: dbUser.createdAt.toISOString(),
+      updatedAt: dbUser.updatedAt.toISOString(),
+    };
+
+    return { success: true, token, user };
+  } catch (error) {
+    console.error('Registration error:', error);
+    return { success: false, error: 'An unexpected error occurred during registration.' };
   }
-
-  const id = generateId();
-  const hashedPassword = await hashPassword(password);
-  const now = new Date().toISOString();
-
-  const storedUser: StoredUser = {
-    id,
-    email,
-    name,
-    password: hashedPassword,
-    balance: 0,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  users.set(id, storedUser);
-
-  const token = encodeToken({ userId: id, email });
-
-  const user: User = {
-    id: storedUser.id,
-    email: storedUser.email,
-    name: storedUser.name,
-    balance: storedUser.balance,
-    createdAt: storedUser.createdAt,
-    updatedAt: storedUser.updatedAt,
-  };
-
-  return { success: true, token, user };
 }
 
 // Login user
 export async function loginUser(
-  email: string,
+  username: string,
   password: string
 ): Promise<{ success: boolean; token?: string; user?: User; error?: string }> {
-  const users = getUsers();
+  try {
+    const dbUser = await prisma.user.findUnique({ where: { username } });
 
-  let foundUser: StoredUser | undefined;
-  for (const user of users.values()) {
-    if (user.email === email) {
-      foundUser = user;
-      break;
+    if (!dbUser) {
+      return { success: false, error: 'Invalid username or password.' };
     }
+
+    const isValid = await verifyPassword(password, dbUser.password);
+    if (!isValid) {
+      return { success: false, error: 'Invalid username or password.' };
+    }
+
+    const token = await encodeToken({ userId: dbUser.id, username: dbUser.username });
+
+    const user: User = {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email || undefined,
+      name: undefined,
+      balance: dbUser.balance,
+      createdAt: dbUser.createdAt.toISOString(),
+      updatedAt: dbUser.updatedAt.toISOString(),
+    };
+
+    return { success: true, token, user };
+  } catch (error) {
+    console.error('Login error:', error);
+    return { success: false, error: 'An unexpected error occurred during login.' };
   }
-
-  if (!foundUser) {
-    return { success: false, error: 'Invalid email or password.' };
-  }
-
-  const isValid = await verifyPassword(password, foundUser.password);
-  if (!isValid) {
-    return { success: false, error: 'Invalid email or password.' };
-  }
-
-  const token = encodeToken({ userId: foundUser.id, email: foundUser.email });
-
-  const user: User = {
-    id: foundUser.id,
-    email: foundUser.email,
-    name: foundUser.name,
-    balance: foundUser.balance,
-    createdAt: foundUser.createdAt,
-    updatedAt: foundUser.updatedAt,
-  };
-
-  return { success: true, token, user };
 }
 
 // Get current user from cookie
@@ -137,23 +130,21 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (!token) return null;
 
-    const decoded = decodeToken(token);
+    const decoded = await decodeToken(token);
     if (!decoded) return null;
 
-    const users = getUsers();
-    const storedUser = users.get(decoded.userId);
-    if (!storedUser) return null;
+    const dbUser = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!dbUser) return null;
 
-    const user: User = {
-      id: storedUser.id,
-      email: storedUser.email,
-      name: storedUser.name,
-      balance: storedUser.balance,
-      createdAt: storedUser.createdAt,
-      updatedAt: storedUser.updatedAt,
+    return {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email || undefined,
+      name: undefined,
+      balance: dbUser.balance,
+      createdAt: dbUser.createdAt.toISOString(),
+      updatedAt: dbUser.updatedAt.toISOString(),
     };
-
-    return user;
   } catch {
     return null;
   }
@@ -177,4 +168,4 @@ export async function clearAuthCookie() {
   cookieStore.delete(TOKEN_COOKIE);
 }
 
-export { encodeToken, decodeToken, hashPassword };
+export { hashPassword };

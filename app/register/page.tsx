@@ -7,7 +7,7 @@ import { SpinnerIcon, MailIcon, LockIcon, UserIcon } from '@/components/Icons';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,7 +32,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ username, email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -52,9 +52,6 @@ export default function RegisterPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <Link href="/" className="auth-header__logo">
-            <img src="/logo.png" alt="Verifio" className="auth-header__logo-img" />
-          </Link>
           <h1 className="auth-header__title">Create Account</h1>
           <p className="auth-header__subtitle">Start verifying in less than a minute.</p>
         </div>
@@ -64,21 +61,21 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div>
-              <label htmlFor="name" className="form-field__label">Full Name</label>
+              <label htmlFor="username" className="form-field__label">Username</label>
               <div className="form-field__input-wrapper">
                 <div className="form-field__icon">
                   <UserIcon className="icon-md" />
                 </div>
-                <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="John Doe" className="form-field__input" />
+                <input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="johndoe123" className="form-field__input" />
               </div>
             </div>
             <div>
-              <label htmlFor="email" className="form-field__label">Email Address</label>
+              <label htmlFor="email" className="form-field__label">Email Address (Optional)</label>
               <div className="form-field__input-wrapper">
                 <div className="form-field__icon">
                   <MailIcon className="icon-md" />
                 </div>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="form-field__input" />
+                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="form-field__input" />
               </div>
             </div>
             <div>
@@ -108,6 +105,9 @@ export default function RegisterPage() {
             <p className="auth-footer__text">
               Already have an account?{' '}
               <Link href="/login" className="auth-footer__link">Sign in</Link>
+            </p>
+            <p className="auth-footer__text" style={{ marginTop: '0.5rem' }}>
+              <Link href="/" className="auth-footer__link">← Back to Home</Link>
             </p>
           </div>
         </div>

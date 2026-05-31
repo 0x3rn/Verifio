@@ -2,8 +2,15 @@
 
 import Link from 'next/link';
 import React from 'react';
+import { usePathname } from 'next/navigation';
 
 export function Footer() {
+  const pathname = usePathname();
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  // Don't render footer on auth pages
+  if (isAuthPage) return null;
+
   return (
     <footer className="footer">
       <div className="page-container footer__inner">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderVoiceCode, getVoiceCode, cancelSMSOrder } from '@/lib/smspool';
-import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/store';
+import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       expiresAt,
     };
 
-    saveOrder(order);
+    await saveOrder(order);
 
     return NextResponse.json({
       success: true,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Order ID is required.' }, { status: 400 });
     }
 
-    const order = getOrder(orderId);
+    const order = await getOrder(orderId);
     if (!order || order.userId !== user.id) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     const voiceData = await getVoiceCode(order.smspoolOrderId);
 
     if (voiceData.success === 1 && voiceData.code) {
-      updateOrder(orderId, {
+      await updateOrder(orderId, {
         code: voiceData.code,
         status: 'completed',
         completedAt: new Date().toISOString(),
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (new Date(order.expiresAt) < new Date()) {
-      updateOrder(orderId, { status: 'expired' });
+      await updateOrder(orderId, { status: 'expired' });
       return NextResponse.json({
         success: false,
         message: 'Order has expired.',
@@ -129,13 +129,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Order ID is required.' }, { status: 400 });
     }
 
-    const order = getOrder(orderId);
+    const order = await getOrder(orderId);
     if (!order || order.userId !== user.id) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
     await cancelSMSOrder(order.smspoolOrderId);
-    updateOrder(orderId, { status: 'cancelled' });
+    await updateOrder(orderId, { status: 'cancelled' });
 
     return NextResponse.json({ success: true, message: 'Order cancelled.' });
   } catch (error) {

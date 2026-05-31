@@ -1,14 +1,15 @@
 export interface User {
   id: string;
-  email: string;
-  name: string;
+  username: string;
+  email?: string;
+  name?: string;
   balance: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface StoredUser extends User {
-  password: string;
+  password?: string;
 }
 
 export interface VerificationOrder {

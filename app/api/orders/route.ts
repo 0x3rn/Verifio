@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getUserOrders } from '@/lib/store';
+import { getUserOrders } from '@/lib/db';
 
 export async function GET() {
   try {
@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
-    const orders = getUserOrders(user.id);
+    const orders = await getUserOrders(user.id);
     return NextResponse.json({ orders });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch orders.';

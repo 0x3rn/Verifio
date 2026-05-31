@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
   const [selectedService, setSelectedService] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
+  const [countryLoading, setCountryLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>('monthly');
   const [orderResult, setOrderResult] = useState<{
     id: string; phoneNumber: string; service: string; country: string; status: string; cost: number; expiresAt: string;
@@ -58,6 +59,25 @@ export default function DashboardPage() {
     };
     fetchUser();
   }, [router]);
+
+  // Auto-detect country from IP on mount
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        const res = await fetch('/api/geo');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.country) {
+            // Only auto-select if it's in our supported list
+            const isSupported = SUPPORTED_COUNTRIES.some(c => c.code === data.country);
+            if (isSupported) setSelectedCountry(data.country);
+          }
+        }
+      } catch { /* silently fail, user can pick manually */ }
+      finally { setCountryLoading(false); }
+    };
+    detectCountry();
+  }, []);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) {
@@ -130,7 +150,7 @@ export default function DashboardPage() {
     <div className="dashboard page-container">
       {/* Header */}
       <div className="dashboard__header">
-        <h1 className="dashboard__title">Welcome back, {user.name.split(' ')[0]}</h1>
+        <h1 className="dashboard__title">Welcome back, {user.username}</h1>
         <p className="dashboard__subtitle">Start a new verification or manage your existing ones.</p>
       </div>
 
@@ -210,7 +230,11 @@ export default function DashboardPage() {
 
             {/* Country selection */}
             <div className="selector-section">
-              <label className="selector-section__label">Select Country</label>
+              <label className="selector-section__label">
+                Select Country
+                {countryLoading && <span className="selector-section__loading"> — detecting your location...</span>}
+                {!countryLoading && selectedCountry && <span className="selector-section__detected"> (auto-detected)</span>}
+              </label>
               <div className="selector-section__search">
                 <input
                   type="text"
@@ -351,12 +375,12 @@ export default function DashboardPage() {
             <h3 className="sidebar-card__title">Account</h3>
             <div className="account-info">
               <div className="account-info__row">
-                <span className="account-info__label">Name</span>
-                <span className="account-info__value">{user.name}</span>
+                <span className="account-info__label">Username</span>
+                <span className="account-info__value">{user.username}</span>
               </div>
               <div className="account-info__row">
                 <span className="account-info__label">Email</span>
-                <span className="account-info__value">{user.email}</span>
+                <span className="account-info__value">{user.email || '—'}</span>
               </div>
               <div className="account-info__row">
                 <span className="account-info__label">Balance</span>

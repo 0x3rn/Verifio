@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderRentalNumber, cancelRental, getRentalCodes } from '@/lib/smspool';
-import { saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/store';
+import { saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
 import type { RentalNumber, PlanTier } from '@/lib/types';
 import { PLAN_DURATIONS } from '@/lib/types';
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       renewedAt: null,
     };
 
-    saveRental(rental);
+    await saveRental(rental);
 
     return NextResponse.json({
       success: true,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 
     // If rentalId is provided, get specific rental or its codes
     if (rentalId) {
-      const rental = getRental(rentalId);
+      const rental = await getRental(rentalId);
       if (!rental || rental.userId !== user.id) {
         return NextResponse.json({ error: 'Rental not found.' }, { status: 404 });
       }
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Otherwise return all rentals
-    const rentals = getUserRentals(user.id);
+    const rentals = await getUserRentals(user.id);
     return NextResponse.json({ rentals });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch rentals.';
@@ -127,13 +127,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Rental ID is required.' }, { status: 400 });
     }
 
-    const rental = getRental(rentalId);
+    const rental = await getRental(rentalId);
     if (!rental || rental.userId !== user.id) {
       return NextResponse.json({ error: 'Rental not found.' }, { status: 404 });
     }
 
     await cancelRental(rental.smspoolRentalId);
-    updateRental(rentalId, { status: 'cancelled' });
+    await updateRental(rentalId, { status: 'cancelled' });
 
     return NextResponse.json({ success: true, message: 'Rental cancelled successfully.' });
   } catch (error) {
