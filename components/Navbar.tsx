@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
-import { SunIcon, MoonIcon, HomeIcon, ClipboardIcon, PhoneIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
+import { SunIcon, MoonIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
@@ -89,18 +89,20 @@ export function Navbar() {
 
           {/* Right section */}
           <div className="navbar__actions">
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="theme-toggle"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? (
-                <SunIcon className="icon-md" />
-              ) : (
-                <MoonIcon className="icon-md" />
-              )}
-            </button>
+            {/* Theme toggle — only shown when NOT logged in (who) */}
+            {!user && (
+              <button
+                onClick={toggleTheme}
+                className="theme-toggle"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <SunIcon className="icon-md" />
+                ) : (
+                  <MoonIcon className="icon-md" />
+                )}
+              </button>
+            )}
 
             {/* User menu / auth buttons */}
             {user ? (
@@ -129,6 +131,25 @@ export function Navbar() {
                     <Link href="/dashboard/rentals" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <PhoneIcon className="icon-md" /> My Rentals
                     </Link>
+                    <Link href="/dashboard/billing" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
+                      <WalletIcon className="icon-md" /> Add Funds
+                    </Link>
+                    <div className="user-menu__dropdown-divider" />
+                    {/* Theme toggle inside user dropdown */}
+                    <button
+                      onClick={toggleTheme}
+                      className="user-menu__dropdown-item"
+                    >
+                      {theme === 'dark' ? (
+                        <>
+                          <SunIcon className="icon-md" /> Light Mode
+                        </>
+                      ) : (
+                        <>
+                          <MoonIcon className="icon-md" /> Dark Mode
+                        </>
+                      )}
+                    </button>
                     <div className="user-menu__dropdown-divider" />
                     <button onClick={handleLogout} className="user-menu__dropdown-logout">
                       <LogoutIcon className="icon-md" /> Sign Out
@@ -161,6 +182,15 @@ export function Navbar() {
               <Link href="/#features" className="mobile-menu__link">Features</Link>
               <Link href="/#pricing" className="mobile-menu__link">Pricing</Link>
               <Link href="/#how-it-works" className="mobile-menu__link">How It Works</Link>
+              {user && (
+                <>
+                  <div className="mobile-menu__divider" />
+                  <Link href="/dashboard" className="mobile-menu__link">Dashboard</Link>
+                  <Link href="/dashboard/orders" className="mobile-menu__link">Order History</Link>
+                  <Link href="/dashboard/rentals" className="mobile-menu__link">My Rentals</Link>
+                  <Link href="/dashboard/billing" className="mobile-menu__link">Add Funds</Link>
+                </>
+              )}
               {!user && (
                 <>
                   <div className="mobile-menu__divider" />
