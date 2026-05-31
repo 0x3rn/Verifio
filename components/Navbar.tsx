@@ -27,6 +27,8 @@ export function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
+    // Skip auth check on auth pages — no point hitting the API
+    if (isAuthPage) return;
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/me');
@@ -37,15 +39,17 @@ export function Navbar() {
       } catch { /* not logged in */ }
     };
     checkAuth();
-  }, []);
+  }, [isAuthPage]);
 
   useEffect(() => {
+    if (isAuthPage) return;
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isAuthPage]);
 
   useEffect(() => {
+    if (isAuthPage) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
@@ -53,7 +57,7 @@ export function Navbar() {
     };
     if (userMenuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [userMenuOpen]);
+  }, [userMenuOpen, isAuthPage]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
