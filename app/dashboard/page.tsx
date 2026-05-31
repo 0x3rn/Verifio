@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, ChartIcon, ClockIcon, RefreshIcon, ArrowLeftIcon } from '@/components/Icons';
+import { SpinnerIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, ChartIcon } from '@/components/Icons';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
@@ -11,6 +11,62 @@ import { identifyUser, trackEvent } from '@/lib/posthog';
 interface SelectableItem {
   id: string;
   name: string;
+}
+
+// Popular items shown as quick-picks before "Show all..."
+const POPULAR_SERVICE_IDS = ['google', 'whatsapp', 'telegram', 'discord', 'facebook', 'instagram', 'twitter', 'microsoft'];
+const POPULAR_COUNTRY_CODES = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'NL', 'SE'];
+
+function PickerModal({
+  items,
+  search,
+  onSearchChange,
+  selected,
+  onSelect,
+  onClose,
+  label,
+}: {
+  items: SelectableItem[];
+  search: string;
+  onSearchChange: (v: string) => void;
+  selected: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+  label: string;
+}) {
+  const filtered = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="picker-modal-overlay" onClick={onClose}>
+      <div className="picker-modal" onClick={e => e.stopPropagation()}>
+        <div className="picker-modal__header">
+          <span className="picker-modal__title">{label}</span>
+          <button onClick={onClose} className="picker-modal__close" aria-label="Close">✕</button>
+        </div>
+        <input
+          type="text"
+          placeholder={`Search ${label.toLowerCase()}...`}
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          className="picker-modal__search"
+          autoFocus
+        />
+        <div className="picker-modal__list">
+          {filtered.length === 0 && <div className="selector-empty">Nothing matches your search.</div>}
+          {filtered.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { onSelect(item.id); onClose(); }}
+              className={`picker-modal__item ${selected === item.id ? 'picker-modal__item--active' : ''}`}
+            >
+              {item.name}
+              {selected === item.id && <span className="picker-modal__check">✓</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -35,8 +91,12 @@ export default function DashboardPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [working, setWorking] = useState(false);
 
+  // Search & modal state
   const [serviceSearch, setServiceSearch] = useState('');
   const [countrySearch, setCountrySearch] = useState('');
+  const [showAllServices, setShowAllServices] = useState(false);
+  const [showAllCountries, setShowAllCountries] = useState(false);
+
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -78,7 +138,6 @@ export default function DashboardPage() {
         const res = await fetch('/api/services');
         if (res.ok) {
           const data = await res.json();
-          // Map API data to SelectableItem format (use name as ID for ordering API compatibility)
           if (Array.isArray(data.services)) {
             setServices(data.services.map((s: { ID: number; name: string }) => ({
               id: s.name.toLowerCase(),
@@ -117,16 +176,15 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.country) {
-            // Only auto-select if it's in our supported list
-            const isSupported = SUPPORTED_COUNTRIES.some(c => c.code === data.country);
+            const isSupported = countries.some(c => c.id === data.country);
             if (isSupported) setSelectedCountry(data.country);
           }
         }
       } catch { /* silently fail, user can pick manually */ }
       finally { setCountryLoading(false); }
     };
-    detectCountry();
-  }, []);
+    if (!listsLoading) detectCountry();
+  }, [listsLoading, countries]);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) {
@@ -150,7 +208,6 @@ export default function DashboardPage() {
       setOrderResult(data.order);
       setStatusMessage(`Number acquired. Use ${data.order.phoneNumber} to request your code.`);
 
-      // PostHog: track verification order
       trackEvent('Verification Ordered', {
         type: activeTab,
         service: selectedService,
@@ -174,7 +231,6 @@ export default function DashboardPage() {
       if (data.success && data.code) {
         setVerificationCode(data.code);
         setStatusMessage('Verification code received!');
-        // PostHog: track code received
         trackEvent('Verification Code Received', {
           type: activeTab,
           service: orderResult.service,
@@ -197,6 +253,12 @@ export default function DashboardPage() {
     } catch { setStatusMessage('Failed to cancel order.'); }
     finally { setWorking(false); }
   }, [orderResult, activeTab]);
+
+  // Compute popular items and "other" items
+  const popularServices = services.filter(s => POPULAR_SERVICE_IDS.includes(s.id));
+  const otherServices = services.filter(s => !POPULAR_SERVICE_IDS.includes(s.id));
+  const popularCountries = countries.filter(c => POPULAR_COUNTRY_CODES.includes(c.id));
+  const otherCountries = countries.filter(c => !POPULAR_COUNTRY_CODES.includes(c.id));
 
   if (loading) {
     return (
@@ -269,19 +331,13 @@ export default function DashboardPage() {
 
             {/* Service selection */}
             <div className="selector-section">
-              <label className="selector-section__label">Select Service</label>
-              <div className="selector-section__search">
-                <input
-                  type="text"
-                  placeholder="Search service... (e.g. Google, WhatsApp, Telegram)"
-                  value={serviceSearch}
-                  onChange={(e) => setServiceSearch(e.target.value)}
-                  className="selector-search-input"
-                />
-              </div>
+              <label className="selector-section__label">
+                Select Service
+                {selectedService && <span className="selector-section__detected"> — {services.find(s => s.id === selectedService)?.name}</span>}
+              </label>
               <div className="selector-grid">
-                {listsLoading && <div className="selector-empty">Loading services...</div>}
-                {!listsLoading && services.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).map((svc) => (
+                {listsLoading && <div className="selector-empty">Loading...</div>}
+                {!listsLoading && popularServices.map(svc => (
                   <button
                     key={svc.id}
                     onClick={() => setSelectedService(svc.id)}
@@ -290,8 +346,13 @@ export default function DashboardPage() {
                     {svc.name}
                   </button>
                 ))}
-                {!listsLoading && services.filter(svc => svc.name.toLowerCase().includes(serviceSearch.toLowerCase())).length === 0 && (
-                  <div className="selector-empty">No services match your search.</div>
+                {!listsLoading && (
+                  <button
+                    onClick={() => { setServiceSearch(''); setShowAllServices(true); }}
+                    className="selector-btn selector-btn--more"
+                  >
+                    + {otherServices.length} more...
+                  </button>
                 )}
               </div>
             </div>
@@ -302,20 +363,11 @@ export default function DashboardPage() {
                 Select Country
                 {listsLoading && <span className="selector-section__loading"> — loading...</span>}
                 {countryLoading && !listsLoading && <span className="selector-section__loading"> — detecting your location...</span>}
-                {!countryLoading && !listsLoading && selectedCountry && <span className="selector-section__detected"> (auto-detected)</span>}
+                {!countryLoading && !listsLoading && selectedCountry && <span className="selector-section__detected"> — {countries.find(c => c.id === selectedCountry)?.name} (auto-detected)</span>}
               </label>
-              <div className="selector-section__search">
-                <input
-                  type="text"
-                  placeholder="Search country... (e.g. United States, Germany)"
-                  value={countrySearch}
-                  onChange={(e) => setCountrySearch(e.target.value)}
-                  className="selector-search-input"
-                />
-              </div>
               <div className="selector-grid">
-                {listsLoading && <div className="selector-empty">Loading countries...</div>}
-                {!listsLoading && countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).map((c) => (
+                {listsLoading && <div className="selector-empty">Loading...</div>}
+                {!listsLoading && popularCountries.map(c => (
                   <button
                     key={c.id}
                     onClick={() => setSelectedCountry(c.id)}
@@ -324,8 +376,13 @@ export default function DashboardPage() {
                     {c.name}
                   </button>
                 ))}
-                {!listsLoading && countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
-                  <div className="selector-empty">No countries match your search.</div>
+                {!listsLoading && (
+                  <button
+                    onClick={() => { setCountrySearch(''); setShowAllCountries(true); }}
+                    className="selector-btn selector-btn--more"
+                  >
+                    + {otherCountries.length} more...
+                  </button>
                 )}
               </div>
             </div>
@@ -427,7 +484,6 @@ export default function DashboardPage() {
 
         {/* Sidebar */}
         <div className="sidebar">
-          {/* Quick links */}
           <div className="sidebar-card">
             <h3 className="sidebar-card__title">Quick Links</h3>
             <div className="sidebar-links">
@@ -440,7 +496,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Account info */}
           <div className="sidebar-card">
             <h3 className="sidebar-card__title">Account</h3>
             <div className="account-info">
@@ -464,6 +519,32 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Service Picker Modal */}
+      {showAllServices && (
+        <PickerModal
+          items={services}
+          search={serviceSearch}
+          onSearchChange={setServiceSearch}
+          selected={selectedService}
+          onSelect={setSelectedService}
+          onClose={() => setShowAllServices(false)}
+          label="All Services"
+        />
+      )}
+
+      {/* Country Picker Modal */}
+      {showAllCountries && (
+        <PickerModal
+          items={countries}
+          search={countrySearch}
+          onSearchChange={setCountrySearch}
+          selected={selectedCountry}
+          onSelect={setSelectedCountry}
+          onClose={() => setShowAllCountries(false)}
+          label="All Countries"
+        />
+      )}
     </div>
   );
 }
