@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Call SMSpool to order a number
     const smspoolOrder = await orderSMSCode(country, service);
 
-    const cost = applyMarkup(smspoolOrder.price);
+    const cost = applyMarkup(Number(smspoolOrder.price) || 0);
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + smspoolOrder.expires_in * 1000).toISOString();
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           service,
           country,
-          phoneNumber: smspoolOrder.number,
+          phoneNumber: String(smspoolOrder.number),
           code: null,
           status: 'waiting_for_code',
           type: 'sms',

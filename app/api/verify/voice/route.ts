@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const voiceOrder = await orderVoiceCode(country, service);
 
-    const cost = applyMarkup(voiceOrder.price);
+    const cost = applyMarkup(Number(voiceOrder.price) || 0);
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + voiceOrder.expires_in * 1000).toISOString();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           service,
           country,
-          phoneNumber: voiceOrder.number,
+          phoneNumber: String(voiceOrder.number),
           code: null,
           status: 'waiting_for_code',
           type: 'voice',
