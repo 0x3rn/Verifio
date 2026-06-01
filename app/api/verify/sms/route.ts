@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode } from '@/lib/smspool';
-import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
+import { prisma, saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
 // Order new SMS verification
@@ -25,38 +25,54 @@ export async function POST(request: NextRequest) {
     // Call SMSpool to order a number
     const smspoolOrder = await orderSMSCode(country, service);
 
+    const cost = smspoolOrder.price;
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + smspoolOrder.expires_in * 1000).toISOString();
 
-    const order: VerificationOrder = {
-      id: orderId,
-      userId: user.id,
-      service,
-      country,
-      phoneNumber: smspoolOrder.number,
-      code: '',
-      status: 'waiting_for_code',
-      type: 'sms',
-      cost: smspoolOrder.price,
-      smspoolOrderId: smspoolOrder.order_id,
-      createdAt: now,
-      completedAt: null,
-      expiresAt,
-    };
+    // Atomic: save order + deduct balance in a single transaction
+    await prisma.$transaction(async (tx) => {
+      // Check and deduct balance
+      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
+      if (!dbUser || dbUser.balance < cost) {
+        throw new Error('Insufficient balance. Please add funds to your wallet.');
+      }
 
-    await saveOrder(order);
+      await tx.user.update({
+        where: { id: user.id },
+        data: { balance: { decrement: cost } },
+      });
+
+      // Save order
+      await tx.order.create({
+        data: {
+          id: orderId,
+          userId: user.id,
+          service,
+          country,
+          phoneNumber: smspoolOrder.number,
+          code: null,
+          status: 'waiting_for_code',
+          type: 'sms',
+          cost,
+          smspoolOrderId: smspoolOrder.order_id,
+          createdAt: new Date(now),
+          completedAt: null,
+          expiresAt: new Date(expiresAt),
+        },
+      });
+    });
 
     return NextResponse.json({
       success: true,
       order: {
-        id: order.id,
-        phoneNumber: order.phoneNumber,
-        service: order.service,
-        country: order.country,
-        status: order.status,
-        cost: order.cost,
-        expiresAt: order.expiresAt,
+        id: orderId,
+        phoneNumber: smspoolOrder.number,
+        service,
+        country,
+        status: 'waiting_for_code',
+        cost,
+        expiresAt,
       },
     }, { status: 201 });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderRentalNumber, cancelRental, getRentalMessages } from '@/lib/smspool';
-import { saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
+import { prisma, saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
 import type { RentalNumber, PlanTier } from '@/lib/types';
 import { PLAN_DURATIONS } from '@/lib/types';
 
@@ -30,42 +30,53 @@ export async function POST(request: NextRequest) {
     // Order rental number for the specified number of days
     const result = await orderRentalNumber(country, planConfig.days, service);
 
+    const cost = Math.round(result.price * (1 - planConfig.discount / 100) * 100) / 100;
     const rentalId = generateRentalId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + planConfig.days * 24 * 60 * 60 * 1000).toISOString();
 
-    // Apply discount to the cost
-    const discountedCost = result.price * (1 - planConfig.discount / 100);
+    // Atomic: save rental + deduct balance in a single transaction
+    await prisma.$transaction(async (tx) => {
+      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
+      if (!dbUser || dbUser.balance < cost) {
+        throw new Error('Insufficient balance. Please add funds to your wallet.');
+      }
 
-    const rental: RentalNumber = {
-      id: rentalId,
-      userId: user.id,
-      phoneNumber: result.number,
-      country,
-      service,
-      status: 'active',
-      plan,
-      cost: Math.round(discountedCost * 100) / 100,
-      smspoolRentalId: result.rental_code,
-      startedAt: now,
-      expiresAt,
-      renewedAt: null,
-    };
+      await tx.user.update({
+        where: { id: user.id },
+        data: { balance: { decrement: cost } },
+      });
 
-    await saveRental(rental);
+      await tx.rental.create({
+        data: {
+          id: rentalId,
+          userId: user.id,
+          phoneNumber: result.number,
+          country,
+          service,
+          status: 'active',
+          plan,
+          cost,
+          smspoolRentalId: result.rental_code,
+          startedAt: new Date(now),
+          expiresAt: new Date(expiresAt),
+          renewedAt: null,
+        },
+      });
+    });
 
     return NextResponse.json({
       success: true,
       rental: {
-        id: rental.id,
-        phoneNumber: rental.phoneNumber,
-        country: rental.country,
-        service: rental.service,
-        status: rental.status,
-        plan: rental.plan,
-        cost: rental.cost,
-        startedAt: rental.startedAt,
-        expiresAt: rental.expiresAt,
+        id: rentalId,
+        phoneNumber: result.number,
+        country,
+        service,
+        status: 'active',
+        plan,
+        cost,
+        startedAt: now,
+        expiresAt,
       },
     }, { status: 201 });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderVoiceCode, checkVoiceCode, cancelSMSOrder } from '@/lib/smspool';
-import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
+import { prisma, saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -20,38 +20,52 @@ export async function POST(request: NextRequest) {
 
     const voiceOrder = await orderVoiceCode(country, service);
 
+    const cost = voiceOrder.price;
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + voiceOrder.expires_in * 1000).toISOString();
 
-    const order: VerificationOrder = {
-      id: orderId,
-      userId: user.id,
-      service,
-      country,
-      phoneNumber: voiceOrder.number,
-      code: '',
-      status: 'waiting_for_code',
-      type: 'voice',
-      cost: voiceOrder.price,
-      smspoolOrderId: voiceOrder.order_id,
-      createdAt: now,
-      completedAt: null,
-      expiresAt,
-    };
+    // Atomic: save order + deduct balance in a single transaction
+    await prisma.$transaction(async (tx) => {
+      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
+      if (!dbUser || dbUser.balance < cost) {
+        throw new Error('Insufficient balance. Please add funds to your wallet.');
+      }
 
-    await saveOrder(order);
+      await tx.user.update({
+        where: { id: user.id },
+        data: { balance: { decrement: cost } },
+      });
+
+      await tx.order.create({
+        data: {
+          id: orderId,
+          userId: user.id,
+          service,
+          country,
+          phoneNumber: voiceOrder.number,
+          code: null,
+          status: 'waiting_for_code',
+          type: 'voice',
+          cost,
+          smspoolOrderId: voiceOrder.order_id,
+          createdAt: new Date(now),
+          completedAt: null,
+          expiresAt: new Date(expiresAt),
+        },
+      });
+    });
 
     return NextResponse.json({
       success: true,
       order: {
-        id: order.id,
-        phoneNumber: order.phoneNumber,
-        service: order.service,
-        country: order.country,
-        status: order.status,
-        cost: order.cost,
-        expiresAt: order.expiresAt,
+        id: orderId,
+        phoneNumber: voiceOrder.number,
+        service,
+        country,
+        status: 'waiting_for_code',
+        cost,
+        expiresAt,
       },
     }, { status: 201 });
   } catch (error) {
