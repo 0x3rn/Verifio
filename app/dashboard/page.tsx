@@ -137,17 +137,14 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [selectedService, selectedCountry, activeTab]);
 
-  // Countdown timer
+  // Countdown timer — always calculates from order's actual expiresAt, never resets
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev === null || prev <= 1) { clearInterval(interval); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
+    if (!orderResult?.expiresAt) { setTimeLeft(null); return; }
+    const update = () => setTimeLeft(Math.max(0, Math.floor((new Date(orderResult.expiresAt).getTime() - Date.now()) / 1000)));
+    update();
+    const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [timeLeft]);
+  }, [orderResult]);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) { setStatusMessage('Please select a service and country.'); return; }
