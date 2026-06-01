@@ -96,6 +96,10 @@ export default function DashboardPage() {
   const [showAllServices, setShowAllServices] = useState(false);
   const [showAllCountries, setShowAllCountries] = useState(false);
 
+  // Pricing state
+  const [pricing, setPricing] = useState<{ basePrice: number; displayPrice: number; successRate?: number } | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -166,6 +170,32 @@ export default function DashboardPage() {
       setHasIdentified(true);
     }
   }, [user, hasIdentified]);
+
+  // Fetch pricing when both service and country are selected
+  useEffect(() => {
+    if (!selectedService || !selectedCountry || activeTab === 'rental') {
+      setPricing(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPricingLoading(true);
+    setPricing(null);
+
+    const fetchPricing = async () => {
+      try {
+        const res = await fetch(`/api/pricing?country=${selectedCountry}&service=${selectedService}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setPricing(data);
+        }
+      } catch { /* silently fail */ }
+      finally { if (!cancelled) setPricingLoading(false); }
+    };
+    fetchPricing();
+
+    return () => { cancelled = true; };
+  }, [selectedService, selectedCountry, activeTab]);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) {
@@ -383,6 +413,24 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Price display */}
+            {selectedService && selectedCountry && activeTab !== 'rental' && (
+              <div className="pricing-display">
+                {pricingLoading ? (
+                  <span className="pricing-display__loading">Calculating price...</span>
+                ) : pricing ? (
+                  <span className="pricing-display__value">
+                    ${pricing.displayPrice.toFixed(2)}
+                    {pricing.successRate && (
+                      <span className="pricing-display__rate"> • {pricing.successRate}% success</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="pricing-display__unavailable">Price unavailable</span>
+                )}
               </div>
             )}
 

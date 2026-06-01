@@ -86,6 +86,34 @@ export async function getServices(): Promise<SMSPoolService[]> {
 
 // ---- Ordering operations ----
 
+// Pricing markup tiers based on base cost
+export function applyMarkup(basePrice: number): number {
+  if (basePrice <= 0.30) return Math.round(basePrice * 5 * 100) / 100;
+  if (basePrice <= 0.60) return Math.round(basePrice * 3.5 * 100) / 100;
+  if (basePrice <= 1.50) return Math.round(basePrice * 2 * 100) / 100;
+  return Math.round(basePrice * 1.5 * 100) / 100;
+}
+
+// Get price for a specific country + service combination
+export async function getPrice(country: string, service: string) {
+  const data = await smspoolPost<{
+    success: number;
+    price: number;
+    success_rate?: number;
+    message?: string;
+  }>('/request/price', { country, service });
+
+  if (data.success !== 1) {
+    throw new Error(data.message || 'Unable to retrieve price.');
+  }
+
+  return {
+    basePrice: data.price,
+    displayPrice: applyMarkup(data.price),
+    successRate: data.success_rate,
+  };
+}
+
 // Get account balance
 export async function getBalance() {
   const data = await smspoolPost<{ success: number; balance: number }>('/request/balance');

@@ -3790,3 +3790,39 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* =============================================
+   PRICING DISPLAY
+   ============================================= */
+
+.pricing-display {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--muted-bg);
+  border: 1px solid var(--card-border);
+}
+
+.pricing-display__loading {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.pricing-display__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.pricing-display__rate {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #22c55e;
+}
+
+.pricing-display__unavailable {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-style: italic;
+}
