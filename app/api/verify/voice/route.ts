@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderVoiceCode, checkVoiceCode, cancelSMSOrder, applyMarkup } from '@/lib/smspool';
-import { prisma, saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
+import { orderVoiceCode, checkVoiceCode, cancelSMSOrder, getPrice, formatPhoneNumber } from '@/lib/smspool';
+import { prisma, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -18,20 +18,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Country and service are required.' }, { status: 400 });
     }
 
+    // Get pricing first
+    let cost = 0;
+    try {
+      const pricing = await getPrice(country, service);
+      cost = pricing.displayPrice;
+    } catch {
+      // if pricing fails, default to 0 and let balance check fail
+    }
+
+    if (cost <= 0) {
+      return NextResponse.json({ error: 'Unable to determine price. Please try again.' }, { status: 400 });
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!dbUser || dbUser.balance < cost) {
+      return NextResponse.json({ error: 'Insufficient balance. Please add funds to your wallet.' }, { status: 400 });
+    }
+
     const voiceOrder = await orderVoiceCode(country, service);
 
-    const cost = applyMarkup(Number(voiceOrder.price) || 0);
     const orderId = generateOrderId();
     const now = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + voiceOrder.expires_in * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + (voiceOrder.expires_in || 600) * 1000).toISOString();
+    const phoneStr = String(voiceOrder.number);
+    const formattedPhone = formatPhoneNumber(phoneStr, country);
 
-    // Atomic: save order + deduct balance in a single transaction
     await prisma.$transaction(async (tx) => {
-      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
-      if (!dbUser || dbUser.balance < cost) {
-        throw new Error('Insufficient balance. Please add funds to your wallet.');
-      }
-
       await tx.user.update({
         where: { id: user.id },
         data: { balance: { decrement: cost } },
@@ -43,7 +56,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           service,
           country,
-          phoneNumber: String(voiceOrder.number),
+          phoneNumber: phoneStr,
           code: null,
           status: 'waiting_for_code',
           type: 'voice',
@@ -60,7 +73,8 @@ export async function POST(request: NextRequest) {
       success: true,
       order: {
         id: orderId,
-        phoneNumber: voiceOrder.number,
+        phoneNumber: formattedPhone,
+        rawNumber: phoneStr,
         service,
         country,
         status: 'waiting_for_code',
@@ -83,6 +97,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
+    const action = searchParams.get('action');
 
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required.' }, { status: 400 });
@@ -91,6 +106,26 @@ export async function GET(request: NextRequest) {
     const order = await getOrder(orderId);
     if (!order || order.userId !== user.id) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+    }
+
+    // Handle refund
+    if (action === 'refund') {
+      if (order.status === 'completed' || order.status === 'refunded') {
+        return NextResponse.json({ error: 'Order has already been completed or refunded.' }, { status: 400 });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { balance: { increment: order.cost } },
+        });
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: 'refunded' },
+        });
+      });
+
+      return NextResponse.json({ success: true, status: 'refunded', message: 'Balance refunded.' });
     }
 
     const voiceData = await checkVoiceCode(order.smspoolOrderId);
@@ -109,12 +144,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Auto-refund if expired
     if (new Date(order.expiresAt) < new Date()) {
-      await updateOrder(orderId, { status: 'expired' });
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { balance: { increment: order.cost } },
+        });
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: 'refunded' },
+        });
+      });
+
       return NextResponse.json({
         success: false,
-        message: 'Order has expired.',
-        status: 'expired',
+        message: 'Order has expired. Balance refunded.',
+        status: 'refunded',
       });
     }
 

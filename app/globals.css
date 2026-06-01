@@ -3826,3 +3826,10 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   color: var(--muted);
   font-style: italic;
 }
+
+/* Active order timer */
+.active-order__timer {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #f59e0b;
+}

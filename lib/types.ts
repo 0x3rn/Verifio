@@ -19,7 +19,7 @@ export interface VerificationOrder {
   country: string;
   phoneNumber: string;
   code: string;
-  status: 'pending' | 'waiting_for_code' | 'completed' | 'expired' | 'cancelled';
+  status: 'pending' | 'waiting_for_code' | 'completed' | 'expired' | 'cancelled' | 'refunded';
   type: 'sms' | 'voice';
   cost: number;
   smspoolOrderId: string;

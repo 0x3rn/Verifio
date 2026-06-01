@@ -1,7 +1,7 @@
 const SMSPOOL_BASE_URL = process.env.SMSPOOL_BASE_URL || 'https://api.smspool.net';
 const SMSPOOL_API_KEY = process.env.SMSPOOL_API_KEY || '';
 
-// ---- SMSpool API uses form-data (multipart/form-data) with `key` param for auth ----
+// ---- SMSpool API uses form-urlencoded POST with `key` param for auth ----
 
 async function smspoolPost<T>(endpoint: string, fields: Record<string, string> = {}): Promise<T> {
   const formData = new URLSearchParams();
@@ -26,7 +26,36 @@ async function smspoolPost<T>(endpoint: string, fields: Record<string, string> =
   return response.json();
 }
 
-// ---- Listing endpoints (POST with empty formdata, cached 1 hour) ----
+// ---- Pricing markup tiers ----
+
+export function applyMarkup(basePrice: number): number {
+  if (basePrice <= 0.30) return Math.round(basePrice * 5 * 100) / 100;
+  if (basePrice <= 0.60) return Math.round(basePrice * 3.5 * 100) / 100;
+  if (basePrice <= 1.50) return Math.round(basePrice * 2 * 100) / 100;
+  return Math.round(basePrice * 1.5 * 100) / 100;
+}
+
+// ---- Phone number formatting ----
+
+const COUNTRY_CODES: Record<string, string> = {
+  US: '+1', GB: '+44', CA: '+1', AU: '+61', DE: '+49', FR: '+33',
+  NL: '+31', SE: '+46', ID: '+62', IN: '+91', PH: '+63', BR: '+55',
+};
+
+export function formatPhoneNumber(number: string, countryCode: string): string {
+  const cleaned = String(number).replace(/\D/g, '');
+  const prefix = COUNTRY_CODES[countryCode] || '';
+  if (!prefix) return cleaned;
+  if (cleaned.startsWith('1') && countryCode === 'US') {
+    const area = cleaned.substring(1, 4);
+    const mid = cleaned.substring(4, 7);
+    const last = cleaned.substring(7, 11);
+    return `+1 (${area}) ${mid}-${last}`;
+  }
+  return `${prefix} ${cleaned}`;
+}
+
+// ---- Listing endpoints (cached 1 hour) ----
 
 interface SMSPoolCountry {
   ID: number;
@@ -84,17 +113,8 @@ export async function getServices(): Promise<SMSPoolService[]> {
   }
 }
 
-// ---- Ordering operations ----
+// ---- Pricing ----
 
-// Pricing markup tiers based on base cost
-export function applyMarkup(basePrice: number): number {
-  if (basePrice <= 0.30) return Math.round(basePrice * 5 * 100) / 100;
-  if (basePrice <= 0.60) return Math.round(basePrice * 3.5 * 100) / 100;
-  if (basePrice <= 1.50) return Math.round(basePrice * 2 * 100) / 100;
-  return Math.round(basePrice * 1.5 * 100) / 100;
-}
-
-// Get price for a specific country + service combination
 export async function getPrice(country: string, service: string) {
   const data = await smspoolPost<{
     success: number;
@@ -107,12 +127,15 @@ export async function getPrice(country: string, service: string) {
     throw new Error(data.message || 'Unable to retrieve price.');
   }
 
+  const basePrice = Number(data.price) || 0;
   return {
-    basePrice: data.price,
-    displayPrice: applyMarkup(data.price),
+    basePrice,
+    displayPrice: applyMarkup(basePrice),
     successRate: data.success_rate,
   };
 }
+
+// ---- Ordering operations ----
 
 // Get account balance
 export async function getBalance() {
@@ -123,7 +146,7 @@ export async function getBalance() {
   };
 }
 
-// Order a new phone number for SMS verification
+// Order SMS verification
 export async function orderSMSCode(
   country: string,
   service: string,
@@ -134,11 +157,11 @@ export async function orderSMSCode(
 
   const data = await smspoolPost<{
     success: number;
-    number: string;
+    number: number | string;
     order_id: string;
     country: string;
     service: string;
-    price: number;
+    price: number | string;
     expires_in: number;
     message?: string;
     pool?: string;
@@ -151,7 +174,7 @@ export async function orderSMSCode(
   return data;
 }
 
-// Check SMS code for an order
+// Check SMS code
 export async function checkSMSCode(orderId: string) {
   const data = await smspoolPost<{
     success: number;
@@ -170,7 +193,7 @@ export async function checkSMSCode(orderId: string) {
   return data;
 }
 
-// Cancel an SMS order
+// Cancel SMS order
 export async function cancelSMSOrder(orderId: string) {
   const data = await smspoolPost<{ success: number; message?: string }>(
     '/sms/cancel',
@@ -198,15 +221,15 @@ export async function resendSMSCode(orderId: string) {
   return data;
 }
 
-// Order a voice call for verification
+// Order voice verification
 export async function orderVoiceCode(country: string, service: string) {
   const data = await smspoolPost<{
     success: number;
-    number: string;
+    number: number | string;
     order_id: string;
     country: string;
     service: string;
-    price: number;
+    price: number | string;
     expires_in: number;
     message?: string;
   }>('/purchase/voice', { country, service });
@@ -250,7 +273,6 @@ export async function getRentalIds() {
 }
 
 // Order rental number
-// country = rental ID from /rental/retrieve_all, days = rental duration
 export async function orderRentalNumber(
   country: string,
   days: number,
@@ -264,9 +286,9 @@ export async function orderRentalNumber(
 
   const data = await smspoolPost<{
     success: number;
-    number: string;
+    number: number | string;
     rental_code: string;
-    price: number;
+    price: number | string;
     expires_in: number;
     message?: string;
   }>('/purchase/rental', fields);
