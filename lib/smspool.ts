@@ -1,42 +1,23 @@
 const SMSPOOL_BASE_URL = process.env.SMSPOOL_BASE_URL || 'https://api.smspool.net';
 const SMSPOOL_API_KEY = process.env.SMSPOOL_API_KEY || '';
 
-// ---- Request helper (uses Bearer token auth) ----
+// ---- SMSpool API uses form-data (multipart/form-data) with `key` param for auth ----
 
-interface SMSPoolRequestOptions {
-  method?: string;
-  body?: Record<string, unknown>;
-}
+async function smspoolPost<T>(endpoint: string, fields: Record<string, string> = {}): Promise<T> {
+  const formData = new URLSearchParams();
+  formData.set('key', SMSPOOL_API_KEY);
+  Object.entries(fields).forEach(([k, v]) => {
+    if (v) formData.set(k, v);
+  });
 
-async function smspoolRequest<T>(
-  endpoint: string,
-  options: SMSPoolRequestOptions = {}
-): Promise<T> {
-  const { method = 'GET', body } = options;
-
-  let url = `${SMSPOOL_BASE_URL}${endpoint}`;
-  const fetchOptions: RequestInit = {
-    method,
+  const response = await fetch(`${SMSPOOL_BASE_URL}${endpoint}`, {
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${SMSPOOL_API_KEY}`,
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
       'Accept': 'application/json',
     },
-  };
-
-  if (body) {
-    if (method === 'GET') {
-      const params = new URLSearchParams();
-      Object.entries(body).forEach(([key, value]) => {
-        params.set(key, String(value));
-      });
-      url = `${url}?${params.toString()}`;
-    } else {
-      fetchOptions.body = JSON.stringify(body);
-    }
-  }
-
-  const response = await fetch(url, fetchOptions);
+    body: formData.toString(),
+  });
 
   if (!response.ok) {
     throw new Error(`Api error: ${response.status} ${response.statusText}`);
@@ -45,7 +26,7 @@ async function smspoolRequest<T>(
   return response.json();
 }
 
-// ---- v2 API helpers (for listing endpoints) ----
+// ---- Listing endpoints (POST with empty formdata, cached 1 hour) ----
 
 interface SMSPoolCountry {
   ID: number;
@@ -61,21 +42,19 @@ interface SMSPoolService {
   name: string;
 }
 
-// Fetch all available countries from SMSpool v2 API
-// Cached for 1 hour since countries rarely change
 export async function getCountries(): Promise<SMSPoolCountry[]> {
   try {
     const response = await fetch(`${SMSPOOL_BASE_URL}/country/retrieve_all`, {
-      method: 'GET',
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SMSPOOL_API_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
+      body: new URLSearchParams({ key: SMSPOOL_API_KEY }).toString(),
       next: { revalidate: 3600 },
     });
 
     if (!response.ok) throw new Error(`Failed to fetch countries: ${response.status}`);
-    
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -84,21 +63,19 @@ export async function getCountries(): Promise<SMSPoolCountry[]> {
   }
 }
 
-// Fetch all available services from SMSpool v2 API
-// Cached for 1 hour since services rarely change
 export async function getServices(): Promise<SMSPoolService[]> {
   try {
     const response = await fetch(`${SMSPOOL_BASE_URL}/service/retrieve_all`, {
-      method: 'GET',
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SMSPOOL_API_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
+      body: new URLSearchParams({ key: SMSPOOL_API_KEY }).toString(),
       next: { revalidate: 3600 },
     });
 
     if (!response.ok) throw new Error(`Failed to fetch services: ${response.status}`);
-
     const data = await response.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -111,7 +88,7 @@ export async function getServices(): Promise<SMSPoolService[]> {
 
 // Get account balance
 export async function getBalance() {
-  const data = await smspoolRequest<{ success: number; balance: number }>('/request/balance');
+  const data = await smspoolPost<{ success: number; balance: number }>('/request/balance');
   return {
     success: data.success === 1,
     balance: data.balance,
@@ -122,22 +99,22 @@ export async function getBalance() {
 export async function orderSMSCode(
   country: string,
   service: string,
-  pool: string = '0'
+  pool?: string
 ) {
-  const data = await smspoolRequest<{
+  const fields: Record<string, string> = { country, service };
+  if (pool) fields.pool = pool;
+
+  const data = await smspoolPost<{
     success: number;
     number: string;
-    pool: string;
     order_id: string;
     country: string;
     service: string;
     price: number;
     expires_in: number;
     message?: string;
-  }>('/request/sms', {
-    method: 'POST',
-    body: { country, service, pool },
-  });
+    pool?: string;
+  }>('/purchase/sms', fields);
 
   if (data.success !== 1) {
     throw new Error(data.message || 'Failed to order verification number.');
@@ -146,24 +123,20 @@ export async function orderSMSCode(
   return data;
 }
 
-// Get received SMS code for an order
-export async function getSMSCode(orderId: string) {
-  const data = await smspoolRequest<{
+// Check SMS code for an order
+export async function checkSMSCode(orderId: string) {
+  const data = await smspoolPost<{
     success: number;
     sms: string;
     code: string;
     full_sms: string;
     number: string;
     order_id: string;
-    country: string;
-    service: string;
     message?: string;
-  }>('/request/sms', {
-    body: { order_id: orderId, get_sms: '1' },
-  });
+  }>('/sms/check', { orderid: orderId });
 
-  if (data.success !== 1 && data.success !== 0) {
-    throw new Error(data.message || 'Failed to retrieve verification code.');
+  if (data.success !== 1) {
+    return { success: 0, code: '', full_sms: '', message: data.message || 'Not yet received' };
   }
 
   return data;
@@ -171,12 +144,9 @@ export async function getSMSCode(orderId: string) {
 
 // Cancel an SMS order
 export async function cancelSMSOrder(orderId: string) {
-  const data = await smspoolRequest<{ success: number; message?: string }>(
-    '/request/sms',
-    {
-      method: 'POST',
-      body: { order_id: orderId, cancel: '1' },
-    }
+  const data = await smspoolPost<{ success: number; message?: string }>(
+    '/sms/cancel',
+    { orderid: orderId }
   );
 
   if (data.success !== 1) {
@@ -188,12 +158,9 @@ export async function cancelSMSOrder(orderId: string) {
 
 // Resend SMS code
 export async function resendSMSCode(orderId: string) {
-  const data = await smspoolRequest<{ success: number; message?: string }>(
-    '/request/sms',
-    {
-      method: 'POST',
-      body: { order_id: orderId, resend: '1' },
-    }
+  const data = await smspoolPost<{ success: number; message?: string; resend?: number }>(
+    '/sms/resend',
+    { orderid: orderId }
   );
 
   if (data.success !== 1) {
@@ -204,24 +171,17 @@ export async function resendSMSCode(orderId: string) {
 }
 
 // Order a voice call for verification
-export async function orderVoiceCode(
-  country: string,
-  service: string
-) {
-  const data = await smspoolRequest<{
+export async function orderVoiceCode(country: string, service: string) {
+  const data = await smspoolPost<{
     success: number;
     number: string;
-    pool: string;
     order_id: string;
     country: string;
     service: string;
     price: number;
     expires_in: number;
     message?: string;
-  }>('/request/voice', {
-    method: 'POST',
-    body: { country, service },
-  });
+  }>('/purchase/voice', { country, service });
 
   if (data.success !== 1) {
     throw new Error(data.message || 'Failed to order voice verification.');
@@ -230,56 +190,58 @@ export async function orderVoiceCode(
   return data;
 }
 
-// Get voice code
-export async function getVoiceCode(orderId: string) {
-  const data = await smspoolRequest<{
+// Check voice code
+export async function checkVoiceCode(orderId: string) {
+  const data = await smspoolPost<{
     success: number;
     code: string;
     number: string;
     order_id: string;
-    country: string;
-    service: string;
     message?: string;
-  }>('/request/voice', {
-    body: { order_id: orderId, get_voice: '1' },
-  });
+  }>('/voice/check', { orderid: orderId });
 
   return data;
 }
 
-// Get rental numbers availability
-export async function getRentalAvailability(country: string, service: string) {
-  const data = await smspoolRequest<{
-    success: number;
-    available: number;
-    numbers?: Array<{ number: string; price: number; period: string }>;
-    message?: string;
-  }>('/request/rental', {
-    body: { country, service, availability: '1' },
-  });
+// Cancel voice order
+export async function cancelVoiceOrder(orderId: string) {
+  const data = await smspoolPost<{ success: number; message?: string }>(
+    '/voice/cancel',
+    { orderid: orderId }
+  );
 
   return data;
 }
 
-// Order a rental number
+// ---- Rental operations ----
+
+// Get rental IDs
+export async function getRentalIds() {
+  const data = await smspoolPost('/rental/retrieve_all');
+  return data;
+}
+
+// Order rental number
+// country = rental ID from /rental/retrieve_all, days = rental duration
 export async function orderRentalNumber(
   country: string,
-  service: string,
-  days: number
+  days: number,
+  service?: string
 ) {
-  const data = await smspoolRequest<{
+  const fields: Record<string, string> = {
+    id: country,
+    days: String(days),
+  };
+  if (service) fields.service_id = service;
+
+  const data = await smspoolPost<{
     success: number;
     number: string;
-    order_id: string;
-    country: string;
-    service: string;
+    rental_code: string;
     price: number;
     expires_in: number;
     message?: string;
-  }>('/request/rental', {
-    method: 'POST',
-    body: { country, service, days },
-  });
+  }>('/purchase/rental', fields);
 
   if (data.success !== 1) {
     throw new Error(data.message || 'Failed to order rental number.');
@@ -288,11 +250,11 @@ export async function orderRentalNumber(
   return data;
 }
 
-// Get rental number codes
-export async function getRentalCodes(rentalId: string) {
-  const data = await smspoolRequest<{
+// Get rental messages
+export async function getRentalMessages(rentalCode: string) {
+  const data = await smspoolPost<{
     success: number;
-    sms_list: Array<{
+    sms_list?: Array<{
       sms: string;
       code: string;
       full_sms: string;
@@ -300,22 +262,35 @@ export async function getRentalCodes(rentalId: string) {
       time: string;
     }>;
     message?: string;
-  }>('/request/rental', {
-    body: { order_id: rentalId, get_sms: '1' },
-  });
+  }>('/rental/retrieve_messages', { rental_code: rentalCode });
 
   return data;
 }
 
-// Cancel a rental number
-export async function cancelRental(rentalId: string) {
-  const data = await smspoolRequest<{ success: number; message?: string }>(
-    '/request/rental',
-    {
-      method: 'POST',
-      body: { order_id: rentalId, cancel: '1' },
-    }
+// Cancel a rental
+export async function cancelRental(rentalCode: string) {
+  const data = await smspoolPost<{ success: number; message?: string }>(
+    '/rental/refund',
+    { rental_code: rentalCode }
   );
 
+  return data;
+}
+
+// Get rental info
+export async function getRentalInfo(rentalCode: string) {
+  const data = await smspoolPost('/rental/info', { rental_code: rentalCode });
+  return data;
+}
+
+// Get active rentals
+export async function getActiveRentals() {
+  const data = await smspoolPost('/rental/retrieve');
+  return data;
+}
+
+// Get rental status
+export async function getRentalStatus(rentalCode: string) {
+  const data = await smspoolPost('/rental/retrieve_status', { rental_code: rentalCode });
   return data;
 }

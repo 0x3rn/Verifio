@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderSMSCode, getSMSCode, cancelSMSOrder, resendSMSCode } from '@/lib/smspool';
+import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode } from '@/lib/smspool';
 import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    // Check SMSPool for the code
-    const smsData = await getSMSCode(order.smspoolOrderId);
+    // Check for the verification code
+    const smsData = await checkSMSCode(order.smspoolOrderId);
 
     if (smsData.success === 1 && smsData.code) {
       await updateOrder(orderId, {

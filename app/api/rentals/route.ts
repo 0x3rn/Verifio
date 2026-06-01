@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderRentalNumber, cancelRental, getRentalCodes } from '@/lib/smspool';
+import { orderRentalNumber, cancelRental, getRentalMessages } from '@/lib/smspool';
 import { saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
 import type { RentalNumber, PlanTier } from '@/lib/types';
 import { PLAN_DURATIONS } from '@/lib/types';
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan selected.' }, { status: 400 });
     }
 
-    // Order rental number with SMSPool for the specified number of days
-    const result = await orderRentalNumber(country, service, planConfig.days);
+    // Order rental number for the specified number of days
+    const result = await orderRentalNumber(country, planConfig.days, service);
 
     const rentalId = generateRentalId();
     const now = new Date().toISOString();
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       status: 'active',
       plan,
       cost: Math.round(discountedCost * 100) / 100,
-      smspoolRentalId: result.order_id,
+      smspoolRentalId: result.rental_code,
       startedAt: now,
       expiresAt,
       renewedAt: null,
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
       // If action is 'codes', fetch SMS codes for this rental
       if (action === 'codes') {
-        const codes = await getRentalCodes(rental.smspoolRentalId);
+        const codes = await getRentalMessages(rental.smspoolRentalId);
         return NextResponse.json({
           rental,
           codes: codes.success === 1 ? codes.sms_list || [] : [],

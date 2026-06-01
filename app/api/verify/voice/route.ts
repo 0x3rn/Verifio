@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderVoiceCode, getVoiceCode, cancelSMSOrder } from '@/lib/smspool';
+import { orderVoiceCode, checkVoiceCode, cancelSMSOrder } from '@/lib/smspool';
 import { saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    const voiceData = await getVoiceCode(order.smspoolOrderId);
+    const voiceData = await checkVoiceCode(order.smspoolOrderId);
 
     if (voiceData.success === 1 && voiceData.code) {
       await updateOrder(orderId, {
