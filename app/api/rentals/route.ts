@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderRentalNumber, cancelRental, getRentalMessages } from '@/lib/smspool';
+import { orderRentalNumber, cancelRental, getRentalMessages, applyMarkup } from '@/lib/smspool';
 import { prisma, saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
 import type { RentalNumber, PlanTier } from '@/lib/types';
 import { PLAN_DURATIONS } from '@/lib/types';
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Order rental number for the specified number of days
     const result = await orderRentalNumber(country, planConfig.days, service);
 
-    const cost = Math.round(result.price * (1 - planConfig.discount / 100) * 100) / 100;
+    const cost = applyMarkup(Math.round(result.price * (1 - planConfig.discount / 100) * 100) / 100);
     const rentalId = generateRentalId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + planConfig.days * 24 * 60 * 60 * 1000).toISOString();

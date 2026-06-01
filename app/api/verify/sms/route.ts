@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode } from '@/lib/smspool';
+import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode, applyMarkup } from '@/lib/smspool';
 import { prisma, saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // Call SMSpool to order a number
     const smspoolOrder = await orderSMSCode(country, service);
 
-    const cost = smspoolOrder.price;
+    const cost = applyMarkup(smspoolOrder.price);
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + smspoolOrder.expires_in * 1000).toISOString();

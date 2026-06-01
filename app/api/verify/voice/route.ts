@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderVoiceCode, checkVoiceCode, cancelSMSOrder } from '@/lib/smspool';
+import { orderVoiceCode, checkVoiceCode, cancelSMSOrder, applyMarkup } from '@/lib/smspool';
 import { prisma, saveOrder, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const voiceOrder = await orderVoiceCode(country, service);
 
-    const cost = voiceOrder.price;
+    const cost = applyMarkup(voiceOrder.price);
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + voiceOrder.expires_in * 1000).toISOString();
