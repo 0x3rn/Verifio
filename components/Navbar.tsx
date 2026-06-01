@@ -18,16 +18,12 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Don't render navbar on auth pages — keep them clean
-  if (isAuthPage) return null;
-
   // Close mobile menu on route change
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    // Skip auth check on auth pages — no point hitting the API
     if (isAuthPage) return;
     const checkAuth = async () => {
       try {
@@ -66,6 +62,9 @@ export function Navbar() {
     window.location.href = '/';
   };
 
+  // Don't render navbar on auth pages — keep them clean
+  if (isAuthPage) return null;
+
   const navbarClass = scrolled ? 'navbar navbar--scrolled' : 'navbar navbar--transparent';
 
   return (
@@ -93,7 +92,7 @@ export function Navbar() {
 
           {/* Right section */}
           <div className="navbar__actions">
-            {/* Theme toggle — only shown when NOT logged in (who) */}
+            {/* Theme toggle — only shown when NOT logged in */}
             {!user && (
               <button
                 onClick={toggleTheme}
