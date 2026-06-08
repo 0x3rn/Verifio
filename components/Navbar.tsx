@@ -78,17 +78,19 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav links */}
-          <div className="navbar__links">
-            {[
-              { href: '/#features', label: 'Features' },
-              { href: '/#pricing', label: 'Pricing' },
-              { href: '/#how-it-works', label: 'How It Works' },
-            ].map((link) => (
-              <Link key={link.href} href={link.href} className="navbar__link">
-                {link.label}
-              </Link>
-            ))}
-          </div>
+          {!user && (
+            <div className="navbar__links">
+              {[
+                { href: '/#features', label: 'Features' },
+                { href: '/#pricing', label: 'Pricing' },
+                { href: '/#how-it-works', label: 'How It Works' },
+              ].map((link) => (
+                <Link key={link.href} href={link.href} className="navbar__link">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Right section */}
           <div className="navbar__actions">
@@ -168,13 +170,15 @@ export function Navbar() {
             )}
 
             {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="mobile-toggle"
-              aria-label="Toggle menu"
-            >
-              {menuOpen ? <XIcon className="icon-md" /> : <MenuIcon className="icon-md" />}
-            </button>
+            {!user && (
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="mobile-toggle"
+                aria-label="Toggle menu"
+              >
+                {menuOpen ? <XIcon className="icon-md" /> : <MenuIcon className="icon-md" />}
+              </button>
+            )}
           </div>
         </div>
 
