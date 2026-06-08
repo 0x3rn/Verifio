@@ -23,6 +23,7 @@ export interface VerificationOrder {
   type: 'sms' | 'voice';
   cost: number;
   smspoolOrderId: string;
+  provider: string;
   createdAt: string;
   completedAt: string | null;
   expiresAt: string;
