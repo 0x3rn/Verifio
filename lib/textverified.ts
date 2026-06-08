@@ -7,9 +7,9 @@ async function getToken() {
   }
 
   const email = process.env.TEXTVERIFIED_EMAIL;
-  const password = process.env.TEXTVERIFIED_PASSWORD;
+  const apiKey = process.env.TEXTVERIFIED_API_KEY;
 
-  if (!email || !password) {
+  if (!email || !apiKey) {
     throw new Error('Textverified credentials not configured in .env');
   }
 
@@ -17,7 +17,7 @@ async function getToken() {
     method: 'POST',
     headers: {
       'X-SimpleToken-Email': email,
-      'X-SimpleToken-Password': password,
+      'X-SimpleToken-Password': apiKey,
     },
   });
 
