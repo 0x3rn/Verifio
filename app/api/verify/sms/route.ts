@@ -189,8 +189,8 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        code: smsData.code,
-        fullSms: smsData.full_sms,
+        code: codeData.code,
+        fullSms: (codeData as any).sms || (codeData as any).full_sms,
         status: 'completed',
       });
     }
