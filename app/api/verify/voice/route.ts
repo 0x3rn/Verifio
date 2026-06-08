@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderVoiceCode, checkVoiceCode, cancelSMSOrder, getPrice, formatPhoneNumber } from '@/lib/smspool';
+import { orderVoiceCode, checkVoiceCode, cancelSMSOrder, getPrice, formatPhoneNumber, getCountries } from '@/lib/smspool';
 import { prisma, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -49,7 +49,13 @@ export async function POST(request: NextRequest) {
     // Hardcode 5-minute timer
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const phoneStr = String(voiceOrder.number);
-    const formattedPhone = formatPhoneNumber(phoneStr, country);
+    
+    // Resolve ISO code for formatting
+    const countriesList = await getCountries();
+    const countryData = countriesList.find((c) => String(c.ID) === String(country));
+    const isoCode = countryData?.short_name || '';
+    
+    const formattedPhone = formatPhoneNumber(phoneStr, isoCode);
 
     // Atomic: verify balance + deduct + save order (all inside transaction)
     await prisma.$transaction(async (tx) => {

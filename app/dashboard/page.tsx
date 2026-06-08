@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, ChartIcon } from '@/components/Icons';
+import { SpinnerIcon, ClipboardIcon, WalletIcon } from '@/components/Icons';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier, VerificationOrder } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
@@ -15,37 +15,6 @@ interface SelectableItem {
 
 const POPULAR_SERVICE_NAMES = ['google', 'whatsapp', 'telegram', 'discord', 'facebook', 'instagram', 'twitter', 'microsoft'];
 const POPULAR_COUNTRY_NAMES = ['united states', 'united kingdom', 'canada', 'australia', 'germany', 'france', 'netherlands', 'sweden'];
-
-function PickerModal({
-  items, search, onSearchChange, selected, onSelect, onClose, label,
-}: {
-  items: SelectableItem[]; search: string; onSearchChange: (v: string) => void;
-  selected: string; onSelect: (id: string) => void; onClose: () => void; label: string;
-}) {
-  const filtered = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
-  return (
-    <div className="picker-modal-overlay" onClick={onClose}>
-      <div className="picker-modal" onClick={e => e.stopPropagation()}>
-        <div className="picker-modal__header">
-          <span className="picker-modal__title">{label}</span>
-          <button onClick={onClose} className="picker-modal__close" aria-label="Close">✕</button>
-        </div>
-        <input type="text" placeholder={`Search ${label.toLowerCase()}...`} value={search}
-          onChange={e => onSearchChange(e.target.value)} className="picker-modal__search" autoFocus />
-        <div className="picker-modal__list">
-          {filtered.length === 0 && <div className="selector-empty">Nothing matches your search.</div>}
-          {filtered.map(item => (
-            <button key={item.id} onClick={() => { onSelect(item.id); onClose(); }}
-              className={`picker-modal__item ${selected === item.id ? 'picker-modal__item--active' : ''}`}>
-              {item.name}
-              {selected === item.id && <span className="picker-modal__check">✓</span>}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function formatTime(ms: number): string {
   if (ms <= 0) return '00:00';
@@ -68,15 +37,13 @@ export default function DashboardPage() {
   const [listsLoading, setListsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>('monthly');
 
-  // Multi-order state
   const [activeOrders, setActiveOrders] = useState<VerificationOrder[]>([]);
-  
   const [statusMessage, setStatusMessage] = useState('');
   const [working, setWorking] = useState(false);
+  
   const [serviceSearch, setServiceSearch] = useState('');
   const [countrySearch, setCountrySearch] = useState('');
-  const [showAllServices, setShowAllServices] = useState(false);
-  const [showAllCountries, setShowAllCountries] = useState(false);
+  
   const [pricing, setPricing] = useState<{ basePrice: number; displayPrice: number; successRate?: number } | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   
@@ -90,7 +57,6 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Fetch User and Active Orders
   useEffect(() => {
     const fetchUserAndOrders = async () => {
       try {
@@ -132,7 +98,12 @@ export default function DashboardPage() {
     fetchLists();
   }, []);
 
-  useEffect(() => { if (user && !hasIdentified) { identifyUser(user.id, { username: user.username, email: user.email || undefined }); setHasIdentified(true); } }, [user, hasIdentified]);
+  useEffect(() => { 
+    if (user && !hasIdentified) { 
+      identifyUser(user.id, { username: user.username, email: user.email || undefined }); 
+      setHasIdentified(true); 
+    } 
+  }, [user, hasIdentified]);
 
   useEffect(() => {
     if (!selectedService || !selectedCountry || activeTab === 'rental') { setPricing(null); return; }
@@ -149,13 +120,11 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [selectedService, selectedCountry, activeTab]);
 
-  // Global timer update
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Handle auto-cancellations
   const handleCancelOrder = useCallback(async (orderId: string) => {
     try {
       await fetch('/api/orders/cancel', {
@@ -165,7 +134,6 @@ export default function DashboardPage() {
       });
       setActiveOrders(prev => prev.filter(o => o.id !== orderId));
       
-      // Update balance
       const userRes = await fetch('/api/auth/me');
       if (userRes.ok) {
         const data = await userRes.json();
@@ -200,7 +168,6 @@ export default function DashboardPage() {
       setStatusMessage(`Number acquired.`);
       trackEvent('Verification Ordered', { type: activeTab, service: selectedService, country: selectedCountry, cost: data.order.cost, plan: activeTab === 'rental' ? selectedPlan : undefined });
       
-      // Update balance
       setUser(prev => prev ? { ...prev, balance: prev.balance - data.order.cost } : prev);
     } catch { setStatusMessage('An unexpected error occurred.'); }
     finally { setWorking(false); }
@@ -230,7 +197,6 @@ export default function DashboardPage() {
         setStatusMessage(data.message || 'Order ended. Balance refunded.'); 
         setActiveOrders(prev => prev.filter(o => o.id !== orderId));
         
-        // Update balance
         const userRes = await fetch('/api/auth/me');
         if (userRes.ok) {
           const data = await userRes.json();
@@ -250,147 +216,259 @@ export default function DashboardPage() {
     setStatusMessage('Order cancelled and refunded.');
   };
 
+  const filteredServices = useMemo(() => {
+    return services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())).sort((a, b) => {
+      const aPop = POPULAR_SERVICE_NAMES.includes(a.name.toLowerCase());
+      const bPop = POPULAR_SERVICE_NAMES.includes(b.name.toLowerCase());
+      if (aPop && !bPop) return -1;
+      if (!aPop && bPop) return 1;
+      return 0;
+    });
+  }, [services, serviceSearch]);
+
+  const filteredCountries = useMemo(() => {
+    return countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).sort((a, b) => {
+      const aPop = POPULAR_COUNTRY_NAMES.includes(a.name.toLowerCase());
+      const bPop = POPULAR_COUNTRY_NAMES.includes(b.name.toLowerCase());
+      if (aPop && !bPop) return -1;
+      if (!aPop && bPop) return 1;
+      return 0;
+    });
+  }, [countries, countrySearch]);
+
   const getServiceName = (id: string) => services.find(s => s.id === id)?.name || id;
   const getCountryName = (id: string) => countries.find(c => c.id === id)?.name || id;
 
-  const popularServices = services.filter(s => POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
-  const otherServices = services.filter(s => !POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
-  const popularCountries = countries.filter(c => POPULAR_COUNTRY_NAMES.includes(c.name.toLowerCase()));
-  const otherCountries = countries.filter(c => !POPULAR_COUNTRY_NAMES.includes(c.name.toLowerCase()));
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <SpinnerIcon className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
 
-  if (loading) return <div className="auth-page"><SpinnerIcon className="spinner--lg spinner--indigo" /></div>;
-  if (!user) return null;
-
-  const statusModifier = statusMessage.includes('received') ? 'status-msg--success'
-    : statusMessage.includes('error') || statusMessage.includes('failed') ? 'status-msg--error'
-    : 'status-msg--info';
+  const statusModifier = statusMessage.includes('received') ? 'bg-green-50 text-green-700 border-green-200'
+    : statusMessage.includes('error') || statusMessage.includes('failed') ? 'bg-red-50 text-red-700 border-red-200'
+    : 'bg-indigo-50 text-indigo-700 border-indigo-200';
 
   return (
-    <div className="dashboard page-container">
-      <div className="dashboard__header">
-        <h1 className="dashboard__title">Welcome back, {user.username}</h1>
-        <p className="dashboard__subtitle">Start a new verification or manage your existing ones.</p>
-      </div>
-      <div className="stats-grid">
-        {[
-          { label: 'Balance', value: `$${user.balance.toFixed(2)}`, Icon: WalletIcon },
-          { label: 'Active Orders', value: activeOrders.length.toString(), Icon: ClipboardIcon },
-          { label: 'Completed', value: '—', Icon: ChartIcon, color: true },
-        ].map(stat => (
-          <div key={stat.label} className="stat-card">
-            <div className="stat-card__header"><stat.Icon className="icon-md stat-card__icon" /><span className="stat-card__label">{stat.label}</span></div>
-            <div className={`stat-card__value ${stat.color ? 'stat-card__value--success' : ''}`}>{stat.value}</div>
-          </div>
-        ))}
-      </div>
-      <div className="dashboard-grid">
+    <div className="dash-layout">
+      {/* Header */}
+      <header className="dash-header">
         <div>
-          <div className="dashboard-form-card">
-            <h2 className="dashboard-form-card__title">New Verification</h2>
-            <div className="verification-tabs">
+          <h1 className="dash-header__title">Dashboard</h1>
+          <p className="dash-header__subtitle">Manage your verifications.</p>
+        </div>
+        <div className="dash-header__balance">
+          <WalletIcon className="icon-sm text-gray-400" />
+          <span>${user.balance.toFixed(2)}</span>
+          <Link href="/dashboard/billing">
+            <button className="dash-topup-btn">Top Up</button>
+          </Link>
+        </div>
+      </header>
+
+      <div className="dash-grid">
+        {/* Left Panel: Create Verification */}
+        <div className="dash-panel">
+          <div className="dash-panel__header">
+            <h2 className="dash-panel__title">Create Verification</h2>
+          </div>
+          
+          <div className="dash-panel__content">
+            {/* Segmented Control */}
+            <div className="segmented-control">
               {(['sms', 'voice', 'rental'] as const).map(tab => (
-                <button key={tab} onClick={() => { setActiveTab(tab); }}
-                  className={`verification-tab ${activeTab === tab ? 'verification-tab--active' : ''}`}>
-                  {tab === 'sms' && <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
-                  {tab === 'voice' && <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>}
-                  {tab === 'rental' && <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>}
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`segmented-control__btn ${activeTab === tab ? 'segmented-control__btn--active' : ''}`}
+                >
+                  {tab === 'sms' && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
+                  {tab === 'voice' && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>}
+                  {tab === 'rental' && <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>}
                   {tab === 'sms' ? 'SMS' : tab === 'voice' ? 'Voice' : 'Rental'}
                 </button>
               ))}
             </div>
-            <div className="selector-section">
-              <label className="selector-section__label">Select Service{selectedService && <span className="selector-section__detected"> — {services.find(s => s.id === selectedService)?.name}</span>}</label>
-              <div className="selector-grid">
-                {listsLoading && <div className="selector-empty">Loading...</div>}
-                {!listsLoading && popularServices.map(svc => (
-                  <button key={svc.id} onClick={() => setSelectedService(svc.id)} className={`selector-btn ${selectedService === svc.id ? 'selector-btn--active' : ''}`}>{svc.name}</button>
-                ))}
-                {!listsLoading && <button onClick={() => { setServiceSearch(''); setShowAllServices(true); }} className="selector-btn selector-btn--more">+ {otherServices.length} more...</button>}
+
+            {/* Selectors */}
+            <div className="dash-selectors">
+              <div className="dash-selector">
+                <label className="dash-label">Service</label>
+                <input
+                  type="text"
+                  placeholder="Search services..."
+                  className="dash-input"
+                  value={serviceSearch}
+                  onChange={(e) => setServiceSearch(e.target.value)}
+                />
+                <div className="dash-list">
+                  {listsLoading ? (
+                    <div className="p-4 text-center text-sm text-gray-500">Loading services...</div>
+                  ) : filteredServices.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">No services found</div>
+                  ) : (
+                    filteredServices.map(svc => (
+                      <button
+                        key={svc.id}
+                        onClick={() => setSelectedService(svc.id)}
+                        className={`dash-list__item ${selectedService === svc.id ? 'dash-list__item--active' : ''}`}
+                      >
+                        {svc.name}
+                        {selectedService === svc.id && <span>✓</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="dash-selector">
+                <label className="dash-label">Country</label>
+                <input
+                  type="text"
+                  placeholder="Search countries..."
+                  className="dash-input"
+                  value={countrySearch}
+                  onChange={(e) => setCountrySearch(e.target.value)}
+                />
+                <div className="dash-list">
+                  {listsLoading ? (
+                    <div className="p-4 text-center text-sm text-gray-500">Loading countries...</div>
+                  ) : filteredCountries.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">No countries found</div>
+                  ) : (
+                    filteredCountries.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedCountry(c.id)}
+                        className={`dash-list__item ${selectedCountry === c.id ? 'dash-list__item--active' : ''}`}
+                      >
+                        {c.name}
+                        {selectedCountry === c.id && <span>✓</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
-            <div className="selector-section">
-              <label className="selector-section__label">Select Country{selectedCountry && <span className="selector-section__detected"> — {countries.find(c => c.id === selectedCountry)?.name}</span>}</label>
-              <div className="selector-grid">
-                {listsLoading && <div className="selector-empty">Loading...</div>}
-                {!listsLoading && popularCountries.map(c => (
-                  <button key={c.id} onClick={() => setSelectedCountry(c.id)} className={`selector-btn ${selectedCountry === c.id ? 'selector-btn--active' : ''}`}>{c.name}</button>
-                ))}
-                {!listsLoading && <button onClick={() => { setCountrySearch(''); setShowAllCountries(true); }} className="selector-btn selector-btn--more">+ {otherCountries.length} more...</button>}
-              </div>
-            </div>
+
             {activeTab === 'rental' && (
-              <div className="selector-section">
-                <label className="selector-section__label">Select Plan</label>
-                <div className="selector-grid selector-grid--2col">
+              <div className="dash-selector mt-2">
+                <label className="dash-label">Rental Duration</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {Object.entries(PLAN_DURATIONS).map(([key, plan]) => (
-                    <button key={key} onClick={() => setSelectedPlan(key as PlanTier)} className={`selector-btn ${selectedPlan === key ? 'selector-btn--active' : ''}`}>
-                      <div className="selector-plan__label">{plan.label}</div>
-                      <div className="selector-plan__days">{plan.days} days</div>
-                      {plan.discount > 0 && <div className="selector-plan__discount">-{plan.discount}%</div>}
+                    <button 
+                      key={key} 
+                      onClick={() => setSelectedPlan(key as PlanTier)} 
+                      className={`p-2 border rounded-lg text-sm transition-colors text-center ${selectedPlan === key ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    >
+                      <div className="block">{plan.label}</div>
+                      <div className="text-xs opacity-70">{plan.days} days</div>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            {selectedService && selectedCountry && activeTab !== 'rental' && (
-              <div className="pricing-display">
-                {pricingLoading ? <span className="pricing-display__loading">Calculating price...</span>
-                  : pricing ? <span className="pricing-display__value">${pricing.displayPrice.toFixed(2)}{pricing.successRate && <span className="pricing-display__rate"> • {pricing.successRate}% success</span>}</span>
-                  : <span className="pricing-display__unavailable">Price unavailable</span>}
+
+            {/* Pricing & Submit */}
+            <div className="dash-submit-area">
+              <div className="dash-price">
+                <span className="dash-price__label">Total Cost</span>
+                {pricingLoading ? (
+                  <span className="text-sm font-medium text-gray-500 mt-1">Calculating...</span>
+                ) : pricing && activeTab !== 'rental' ? (
+                  <>
+                    <span className="dash-price__value">${pricing.displayPrice.toFixed(2)}</span>
+                    {pricing.successRate && <span className="dash-price__success">{pricing.successRate}% success rate</span>}
+                  </>
+                ) : (
+                  <span className="dash-price__value">—</span>
+                )}
               </div>
-            )}
-            <button onClick={handleOrder} disabled={working || !selectedService || !selectedCountry || activeOrders.length >= 5} className="dashboard-submit">
-              {working ? 'Processing...' : `Get ${activeTab === 'rental' ? 'Rental' : activeTab === 'voice' ? 'Voice' : 'SMS'} Number`}
-            </button>
-            {activeOrders.length >= 5 && <p className="text-red-500 text-sm mt-2 text-center font-medium">You have reached the limit of 5 active orders.</p>}
-            {statusMessage && <div className={`status-msg ${statusModifier}`}>{statusMessage}</div>}
+              <button 
+                onClick={handleOrder} 
+                disabled={working || !selectedService || !selectedCountry || activeOrders.length >= 5} 
+                className="dash-btn-primary"
+              >
+                {working ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : null}
+                {working ? 'Processing' : `Get Number`}
+              </button>
+            </div>
+            {activeOrders.length >= 5 && <p className="text-red-500 text-xs font-medium text-right mt-[-10px]">Limit of 5 active orders reached.</p>}
+            {statusMessage && <div className={`dash-status ${statusModifier}`}>{statusMessage}</div>}
           </div>
         </div>
 
-        {/* Active Orders Sidebar */}
-        <div className="active-orders-column">
-          {activeOrders.length > 0 ? (
-            <div className="active-orders-list">
-              {activeOrders.map(order => {
-                const timeLeft = new Date(order.expiresAt).getTime() - now;
-                return (
-                  <div key={order.id} className="active-order">
-                    <div className="active-order__header">
-                      <h3 className="active-order__title">{getServiceName(order.service)} <span className="active-order__country">({getCountryName(order.country)})</span></h3>
-                      {timeLeft > 0 && <span className="active-order__timer font-mono">{formatTime(timeLeft)}</span>}
-                    </div>
-                    <div className="active-order__grid">
-                      <div>
-                        <div className="active-order__field-label">Phone Number</div>
-                        <div className="active-order__phone-row">
-                          <span className="active-order__phone">{order.phoneNumber}</span>
-                          <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="copy-btn" title="Copy">
-                            {copiedId === order.id ? <span className="copy-btn__label">Copied!</span> : <svg className="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-                          </button>
+        {/* Right Panel: Active Verifications */}
+        <div className="dash-panel dash-panel--transparent">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Active Verifications</h2>
+            <Link href="/dashboard/orders" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">View History &rarr;</Link>
+          </div>
+          
+          <div className="active-orders-column">
+            {activeOrders.length > 0 ? (
+              <div className="active-orders-list">
+                {activeOrders.map(order => {
+                  const timeLeft = new Date(order.expiresAt).getTime() - now;
+                  return (
+                    <div key={order.id} className="dash-active-card">
+                      <div className="dash-active-card__header">
+                        <div>
+                          <div className="dash-active-card__service">{getServiceName(order.service)}</div>
+                          <div className="dash-active-card__country">{getCountryName(order.country)}</div>
+                        </div>
+                        {timeLeft > 0 && <div className="dash-active-card__timer">{formatTime(timeLeft)}</div>}
+                      </div>
+
+                      <div className="dash-active-card__body">
+                        <div className="dash-active-card__row">
+                          <span className="dash-active-card__label">Phone Number</span>
+                          <div className="dash-active-card__number-wrap">
+                            <span className="dash-active-card__number">{order.phoneNumber}</span>
+                            <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                              {copiedId === order.id ? <span className="text-green-500 text-xs font-bold uppercase tracking-wider">Copied</span> : <ClipboardIcon className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="dash-active-card__row">
+                          <span className="dash-active-card__label">Cost</span>
+                          <span className="dash-active-card__cost">${order.cost.toFixed(2)}</span>
                         </div>
                       </div>
-                      <div><div className="active-order__field-label">Cost</div><div className="active-order__cost">${order.cost.toFixed(2)}</div></div>
+
+                      <div className="dash-active-card__actions">
+                        <button 
+                          onClick={() => handleCheckCode(order.id)} 
+                          disabled={checkingOrderId === order.id} 
+                          className="dash-btn-secondary"
+                        >
+                          {checkingOrderId === order.id ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : 'Check SMS'}
+                        </button>
+                        <button 
+                          onClick={() => handleManualCancel(order.id)} 
+                          disabled={working} 
+                          className="dash-btn-danger"
+                        >
+                          Cancel & Refund
+                        </button>
+                      </div>
                     </div>
-                    <div className="active-order__actions">
-                      <button onClick={() => handleCheckCode(order.id)} disabled={checkingOrderId === order.id} className="check-code-btn">
-                        {checkingOrderId === order.id ? <span className="check-code-btn__inner"><SpinnerIcon className="icon-md" /></span> : 'Check Code'}
-                      </button>
-                      <button onClick={() => handleManualCancel(order.id)} disabled={working} className="cancel-btn">Cancel</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="active-order-empty">
-              <ClipboardIcon className="icon-xl active-order-empty__icon" />
-              <p>No active verifications.</p>
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="active-order-empty">
+                <ClipboardIcon className="w-10 h-10 active-order-empty__icon" />
+                <h3 className="font-medium text-gray-900 dark:text-white mb-1">No active verifications</h3>
+                <p className="text-sm">Create a new verification on the left to get started.</p>
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
-      {showAllServices && <PickerModal items={services} search={serviceSearch} onSearchChange={setServiceSearch} selected={selectedService} onSelect={setSelectedService} onClose={() => setShowAllServices(false)} label="All Services" />}
-      {showAllCountries && <PickerModal items={countries} search={countrySearch} onSearchChange={setCountrySearch} selected={selectedCountry} onSelect={setSelectedCountry} onClose={() => setShowAllCountries(false)} label="All Countries" />}
     </div>
   );
 }

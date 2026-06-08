@@ -1,6 +1,7 @@
 /* =============================================
    Verifio — Global Stylesheet (Vanilla CSS)
    ============================================= */
+@import './dashboard.css';
 
 /* ---- CSS Custom Properties (Design Tokens) ---- */
 :root {
