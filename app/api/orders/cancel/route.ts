@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma, getOrder } from '@/lib/db';
 import { cancelSMSOrder } from '@/lib/smspool';
+import { cancelTextVerifiedOrder } from '@/lib/textverified';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,16 +32,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only waiting orders can be cancelled.' }, { status: 400 });
     }
 
-    // Attempt to cancel on SMSPool
+    // Attempt to cancel on upstream
     try {
-      await cancelSMSOrder(order.smspoolOrderId);
+      if (order.provider === 'textverified') {
+        await cancelTextVerifiedOrder(order.smspoolOrderId);
+      } else {
+        await cancelSMSOrder(order.smspoolOrderId);
+      }
     } catch (cancelError) {
       const msg = cancelError instanceof Error ? cancelError.message : String(cancelError);
-      // SMSPool might say it's already cancelled or completed.
-      // We log it and optionally proceed or fail depending on strictness.
-      console.warn(`SMSPool cancel failed for ${order.smspoolOrderId}: ${msg}`);
-      // If it fails because the order doesn't exist or already completed, we shouldn't refund if it actually completed.
-      // For safety, if SMSPool cancellation throws, we return the error to the client.
+      console.warn(`Upstream cancel failed for ${order.smspoolOrderId} (${order.provider}): ${msg}`);
       return NextResponse.json({ error: `Failed to cancel upstream order: ${msg}` }, { status: 400 });
     }
 

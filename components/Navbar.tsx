@@ -78,7 +78,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav links */}
-          {!user && (
+          {!user ? (
             <div className="navbar__links">
               {[
                 { href: '/#features', label: 'Features' },
@@ -90,7 +90,7 @@ export function Navbar() {
                 </Link>
               ))}
             </div>
-          )}
+          ) : <div />}
 
           {/* Right section */}
           <div className="navbar__actions">

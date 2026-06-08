@@ -35,6 +35,7 @@ model Order {
   type           String
   cost           Float
   smspoolOrderId String
+  provider       String    @default("smspool")
   createdAt      DateTime  @default(now())
   completedAt    DateTime?
   expiresAt      DateTime

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode, applyMarkup, getPrice, formatPhoneNumber, getCountries } from '@/lib/smspool';
+import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode, applyMarkup, getPrice, formatPhoneNumber, getCountries, getServices } from '@/lib/smspool';
+import { orderTextVerifiedCode, checkTextVerifiedCode } from '@/lib/textverified';
 import { prisma, getOrder, updateOrder, generateOrderId } from '@/lib/db';
 import type { VerificationOrder } from '@/lib/types';
 
@@ -47,14 +48,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unable to determine price. Please try again.' }, { status: 400 });
     }
 
-    // 3. Order from SMSpool
-    const smspoolOrder = await orderSMSCode(country, service);
+    // Determine the service name to see if we should route to Textverified
+    const smspoolServices = await getServices();
+    const serviceData = smspoolServices.find(s => String(s.ID) === String(service));
+    const serviceName = serviceData ? serviceData.name.toLowerCase() : '';
+
+    let upstreamOrder;
+    let provider = 'smspool';
+
+    try {
+      if (serviceName === 'whatsapp') {
+        upstreamOrder = await orderTextVerifiedCode('whatsapp');
+        provider = 'textverified';
+      } else {
+        upstreamOrder = await orderSMSCode(country, service);
+      }
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Failed to order number.' }, { status: 400 });
+    }
 
     const orderId = generateOrderId();
     const now = new Date().toISOString();
     // Hardcode 5-minute timer
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    const phoneStr = String(smspoolOrder.number);
+    const phoneStr = String(upstreamOrder.number);
     
     // Resolve ISO code for formatting
     const countriesList = await getCountries();
@@ -86,7 +103,8 @@ export async function POST(request: NextRequest) {
           status: 'waiting_for_code',
           type: 'sms',
           cost,
-          smspoolOrderId: smspoolOrder.order_id,
+          smspoolOrderId: String(upstreamOrder.order_id),
+          provider,
           createdAt: new Date(now),
           completedAt: null,
           expiresAt: new Date(expiresAt),
@@ -155,11 +173,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Check for the verification code
-    const smsData = await checkSMSCode(order.smspoolOrderId);
+    let codeData;
+    if (order.provider === 'textverified') {
+      codeData = await checkTextVerifiedCode(order.smspoolOrderId);
+    } else {
+      codeData = await checkSMSCode(order.smspoolOrderId);
+    }
 
-    if (smsData.success === 1 && smsData.code) {
+    if (codeData.success === 1 && codeData.code) {
       await updateOrder(orderId, {
-        code: smsData.code,
+        code: codeData.code,
         status: 'completed',
         completedAt: new Date().toISOString(),
       });
