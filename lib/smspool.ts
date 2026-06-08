@@ -192,10 +192,19 @@ export async function getPrice(country: string, service: string) {
 
 // Get account balance
 export async function getBalance() {
-  const data = await smspoolPost<{ success: number; balance: number }>('/request/balance');
+  const data = await smspoolPost<any>('/request/balance');
+  
+  // If data is an object with balance, it's successful.
+  if (data && data.balance !== undefined) {
+    return {
+      success: true,
+      balance: Number(data.balance),
+    };
+  }
+
   return {
-    success: data.success === 1,
-    balance: data.balance,
+    success: false,
+    balance: 0,
   };
 }
 
