@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan selected.' }, { status: 400 });
     }
 
+    // Quick balance pre-check to avoid wasting an upstream purchase
+    const dbUserPrecheck = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!dbUserPrecheck || dbUserPrecheck.balance <= 0) {
+      return NextResponse.json({ error: 'Insufficient balance. Please add funds to your wallet.' }, { status: 400 });
+    }
+
     // Order rental number for the specified number of days
     const result = await orderRentalNumber(country, planConfig.days, service);
 

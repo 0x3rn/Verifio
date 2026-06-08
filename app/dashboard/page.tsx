@@ -13,8 +13,9 @@ interface SelectableItem {
   name: string;
 }
 
-const POPULAR_SERVICE_IDS = ['google', 'whatsapp', 'telegram', 'discord', 'facebook', 'instagram', 'twitter', 'microsoft'];
-const POPULAR_COUNTRY_CODES = ['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'NL', 'SE'];
+// Match popular items by name (case-insensitive) since IDs are numeric from SMSPool
+const POPULAR_SERVICE_NAMES = ['google', 'whatsapp', 'telegram', 'discord', 'facebook', 'instagram', 'twitter', 'microsoft'];
+const POPULAR_COUNTRY_NAMES = ['united states', 'united kingdom', 'canada', 'australia', 'germany', 'france', 'netherlands', 'sweden'];
 
 function PickerModal({
   items, search, onSearchChange, selected, onSelect, onClose, label,
@@ -111,8 +112,8 @@ export default function DashboardPage() {
         const res = await fetch('/api/services');
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.services)) setServices(data.services.map((s: { ID: number; name: string }) => ({ id: s.name.toLowerCase(), name: s.name })));
-          if (Array.isArray(data.countries)) setCountries(data.countries.map((c: { ID: number; code: string; name: string; short_name: string }) => ({ id: c.code || c.short_name, name: c.name })));
+          if (Array.isArray(data.services)) setServices(data.services.map((s: { ID: number; name: string }) => ({ id: String(s.ID), name: s.name })));
+          if (Array.isArray(data.countries)) setCountries(data.countries.map((c: { ID: number; code: string; name: string; short_name: string }) => ({ id: String(c.ID), name: c.name })));
         }
       } catch { /* fallback */ }
       finally { setListsLoading(false); }
@@ -193,10 +194,10 @@ export default function DashboardPage() {
     finally { setWorking(false); }
   }, [orderResult, activeTab]);
 
-  const popularServices = services.filter(s => POPULAR_SERVICE_IDS.includes(s.id));
-  const otherServices = services.filter(s => !POPULAR_SERVICE_IDS.includes(s.id));
-  const popularCountries = countries.filter(c => POPULAR_COUNTRY_CODES.includes(c.id));
-  const otherCountries = countries.filter(c => !POPULAR_COUNTRY_CODES.includes(c.id));
+  const popularServices = services.filter(s => POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
+  const otherServices = services.filter(s => !POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
+  const popularCountries = countries.filter(c => POPULAR_COUNTRY_NAMES.includes(c.name.toLowerCase()));
+  const otherCountries = countries.filter(c => !POPULAR_COUNTRY_NAMES.includes(c.name.toLowerCase()));
 
   if (loading) return <div className="auth-page"><SpinnerIcon className="spinner--lg spinner--indigo" /></div>;
   if (!user) return null;

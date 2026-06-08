@@ -71,7 +71,22 @@ interface SMSPoolService {
   name: string;
 }
 
+// ---- In-memory caches for ID resolution (TTL: 1 hour) ----
+
+interface CachedList<T> {
+  data: T[];
+  fetchedAt: number;
+}
+
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+let countriesCache: CachedList<SMSPoolCountry> | null = null;
+let servicesCache: CachedList<SMSPoolService> | null = null;
+
 export async function getCountries(): Promise<SMSPoolCountry[]> {
+  if (countriesCache && Date.now() - countriesCache.fetchedAt < CACHE_TTL_MS) {
+    return countriesCache.data;
+  }
+
   try {
     const response = await fetch(`${SMSPOOL_BASE_URL}/country/retrieve_all`, {
       method: 'POST',
@@ -80,19 +95,24 @@ export async function getCountries(): Promise<SMSPoolCountry[]> {
         'Accept': 'application/json',
       },
       body: new URLSearchParams({ key: SMSPOOL_API_KEY }).toString(),
-      next: { revalidate: 3600 },
     });
 
     if (!response.ok) throw new Error(`Failed to fetch countries: ${response.status}`);
     const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const list = Array.isArray(data) ? data : [];
+    countriesCache = { data: list, fetchedAt: Date.now() };
+    return list;
   } catch (error) {
     console.error('Countries fetch error:', error);
-    return [];
+    return countriesCache?.data ?? [];
   }
 }
 
 export async function getServices(): Promise<SMSPoolService[]> {
+  if (servicesCache && Date.now() - servicesCache.fetchedAt < CACHE_TTL_MS) {
+    return servicesCache.data;
+  }
+
   try {
     const response = await fetch(`${SMSPOOL_BASE_URL}/service/retrieve_all`, {
       method: 'POST',
@@ -101,27 +121,64 @@ export async function getServices(): Promise<SMSPoolService[]> {
         'Accept': 'application/json',
       },
       body: new URLSearchParams({ key: SMSPOOL_API_KEY }).toString(),
-      next: { revalidate: 3600 },
     });
 
     if (!response.ok) throw new Error(`Failed to fetch services: ${response.status}`);
     const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const list = Array.isArray(data) ? data : [];
+    servicesCache = { data: list, fetchedAt: Date.now() };
+    return list;
   } catch (error) {
     console.error('Services fetch error:', error);
-    return [];
+    return servicesCache?.data ?? [];
   }
+}
+
+// ---- ID Resolution ----
+// The SMSPool API requires numeric IDs for country/service.
+// The frontend may send either a numeric ID string or a name/code.
+// These helpers resolve whatever the frontend sends into the correct numeric ID.
+
+export async function resolveCountryId(input: string): Promise<string> {
+  // If already a pure number, assume it's a valid ID
+  if (/^\d+$/.test(input)) return input;
+
+  // Otherwise look up by code or short_name or name
+  const countries = await getCountries();
+  const upper = input.toUpperCase();
+  const lower = input.toLowerCase();
+  const match = countries.find(
+    c => c.code?.toUpperCase() === upper
+      || c.short_name?.toUpperCase() === upper
+      || c.name?.toLowerCase() === lower
+  );
+  if (match) return String(match.ID);
+  throw new Error(`Unknown country: ${input}`);
+}
+
+export async function resolveServiceId(input: string): Promise<string> {
+  if (/^\d+$/.test(input)) return input;
+
+  const services = await getServices();
+  const lower = input.toLowerCase();
+  const match = services.find(s => s.name?.toLowerCase() === lower);
+  if (match) return String(match.ID);
+  throw new Error(`Unknown service: ${input}`);
 }
 
 // ---- Pricing ----
 
 export async function getPrice(country: string, service: string) {
+  // Resolve to numeric IDs that SMSPool expects
+  const countryId = await resolveCountryId(country);
+  const serviceId = await resolveServiceId(service);
+
   const data = await smspoolPost<{
     success: number;
     price: number;
     success_rate?: number;
     message?: string;
-  }>('/request/price', { country, service });
+  }>('/request/price', { country: countryId, service: serviceId });
 
   if (data.success !== 1) {
     throw new Error(data.message || 'Unable to retrieve price.');
@@ -152,7 +209,9 @@ export async function orderSMSCode(
   service: string,
   pool?: string
 ) {
-  const fields: Record<string, string> = { country, service };
+  const countryId = await resolveCountryId(country);
+  const serviceId = await resolveServiceId(service);
+  const fields: Record<string, string> = { country: countryId, service: serviceId };
   if (pool) fields.pool = pool;
 
   const data = await smspoolPost<{
@@ -223,6 +282,8 @@ export async function resendSMSCode(orderId: string) {
 
 // Order voice verification
 export async function orderVoiceCode(country: string, service: string) {
+  const countryId = await resolveCountryId(country);
+  const serviceId = await resolveServiceId(service);
   const data = await smspoolPost<{
     success: number;
     number: number | string;
@@ -232,7 +293,7 @@ export async function orderVoiceCode(country: string, service: string) {
     price: number | string;
     expires_in: number;
     message?: string;
-  }>('/purchase/voice', { country, service });
+  }>('/purchase/voice', { country: countryId, service: serviceId });
 
   if (data.success !== 1) {
     throw new Error(data.message || 'Failed to order voice verification.');

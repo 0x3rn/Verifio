@@ -36,13 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unable to determine price. Please try again.' }, { status: 400 });
     }
 
-    // 3. Verify balance in a pre-check
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!dbUser || dbUser.balance < cost) {
-      return NextResponse.json({ error: 'Insufficient balance. Please add funds to your wallet.' }, { status: 400 });
-    }
-
-    // 4. Order from SMSpool
+    // 3. Order from SMSpool
     const smspoolOrder = await orderSMSCode(country, service);
 
     const orderId = generateOrderId();
@@ -51,8 +45,13 @@ export async function POST(request: NextRequest) {
     const phoneStr = String(smspoolOrder.number);
     const formattedPhone = formatPhoneNumber(phoneStr, country);
 
-    // 5. Atomic: deduct balance + save order
+    // 4. Atomic: verify balance + deduct + save order (all inside transaction)
     await prisma.$transaction(async (tx) => {
+      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
+      if (!dbUser || dbUser.balance < cost) {
+        throw new Error('Insufficient balance. Please add funds to your wallet.');
+      }
+
       await tx.user.update({
         where: { id: user.id },
         data: { balance: { decrement: cost } },
