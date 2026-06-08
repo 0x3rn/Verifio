@@ -173,14 +173,10 @@ export async function getPrice(country: string, service: string) {
   const countryId = await resolveCountryId(country);
   const serviceId = await resolveServiceId(service);
 
-  const data = await smspoolPost<{
-    success: number;
-    price: number;
-    success_rate?: number;
-    message?: string;
-  }>('/request/price', { country: countryId, service: serviceId });
+  const data = await smspoolPost<any>('/request/price', { country: countryId, service: serviceId });
 
-  if (data.success !== 1) {
+  // The SMSPool API returns `0` (or an object with success: 0) if the price is unavailable or error.
+  if (data === 0 || data.success === 0) {
     throw new Error(data.message || 'Unable to retrieve price.');
   }
 
