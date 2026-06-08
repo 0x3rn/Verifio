@@ -18,6 +18,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Country and service are required.' }, { status: 400 });
     }
 
+    // Check active order limit
+    const activeOrdersCount = await prisma.order.count({
+      where: { userId: user.id, status: 'waiting_for_code' },
+    });
+    if (activeOrdersCount >= 5) {
+      return NextResponse.json(
+        { error: 'You have reached the limit of 5 active orders. Please complete or cancel existing orders.' },
+        { status: 400 }
+      );
+    }
+
     // Get pricing first
     let cost = 0;
     try {
@@ -35,7 +46,8 @@ export async function POST(request: NextRequest) {
 
     const orderId = generateOrderId();
     const now = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + (voiceOrder.expires_in || 600) * 1000).toISOString();
+    // Hardcode 5-minute timer
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const phoneStr = String(voiceOrder.number);
     const formattedPhone = formatPhoneNumber(phoneStr, country);
 

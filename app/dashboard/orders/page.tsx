@@ -10,8 +10,11 @@ import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES } from '@/lib/types';
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<VerificationOrder[]>([]);
+  const [servicesMap, setServicesMap] = useState<Record<string, string>>({});
+  const [countriesMap, setCountriesMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [now, setNow] = useState(Date.now());
 
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
@@ -29,19 +32,41 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    // Timer interval for updating countdowns
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchOrdersAndLists = async () => {
       try {
-        const res = await fetch('/api/orders');
-        if (res.ok) {
-          const data = await res.json();
+        const [ordersRes, servicesRes] = await Promise.all([
+          fetch('/api/orders'),
+          fetch('/api/services')
+        ]);
+
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
           setOrders(data.orders || []);
-        } else if (res.status === 401) {
+        } else if (ordersRes.status === 401) {
           router.push('/login');
+        }
+
+        if (servicesRes.ok) {
+          const { services, countries } = await servicesRes.json();
+          const sMap: Record<string, string> = {};
+          const cMap: Record<string, string> = {};
+          
+          services?.forEach((s: any) => sMap[String(s.ID)] = s.name);
+          countries?.forEach((c: any) => cMap[String(c.ID)] = c.name);
+          
+          setServicesMap(sMap);
+          setCountriesMap(cMap);
         }
       } catch { /* keep existing */ }
       finally { setLoading(false); }
     };
-    fetchOrders();
+    fetchOrdersAndLists();
   }, [router]);
 
   const filteredOrders = filter === 'all' ? orders : orders.filter((o) => o.status === filter || o.type === filter);
@@ -55,6 +80,22 @@ export default function OrdersPage() {
       cancelled: 'badge--cancelled',
     };
     return map[status] || 'badge--pending';
+  };
+
+  const getServiceName = (id: string) => {
+    return servicesMap[id] || SUPPORTED_SERVICES.find(s => s.id === id)?.name || id;
+  };
+
+  const getCountryName = (id: string) => {
+    return countriesMap[id] || SUPPORTED_COUNTRIES.find(c => c.code === id)?.name || id;
+  };
+
+  const formatTime = (ms: number) => {
+    if (ms <= 0) return '00:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -119,15 +160,15 @@ export default function OrdersPage() {
       ) : (
         <div className="card-list">
           {filteredOrders.map((order) => {
-            const service = SUPPORTED_SERVICES.find((s) => s.id === order.service);
-            const country = SUPPORTED_COUNTRIES.find((c) => c.code === order.country);
+            const timeLeft = new Date(order.expiresAt).getTime() - now;
+            const isWaiting = order.status === 'waiting_for_code';
 
             return (
               <div key={order.id} className="list-card">
                 <div className="list-card__header">
                   <div>
-                    <div className="list-card__service">{service?.name || order.service}</div>
-                    <div className="list-card__country">{country?.name || order.country}</div>
+                    <div className="list-card__service">{getServiceName(order.service)}</div>
+                    <div className="list-card__country">{getCountryName(order.country)}</div>
                   </div>
                   <div className="list-card__badges">
                     <span className={`badge ${getStatusBadge(order.status)}`}>
@@ -137,7 +178,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                <div className="card-details card-details--3col">
+                <div className="card-details card-details--4col">
                   <div>
                     <div className="card-detail__label">Phone Number</div>
                     <div className="card-detail__phone-row">
@@ -164,6 +205,16 @@ export default function OrdersPage() {
                   <div>
                     <div className="card-detail__label">Date</div>
                     <div className="card-detail__value">{new Date(order.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div className="card-detail__label">Timer</div>
+                    <div className="card-detail__value">
+                      {isWaiting ? (
+                        <span className="text-red-500 font-mono font-medium">{formatTime(timeLeft)}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </div>
                   </div>
                 </div>
 

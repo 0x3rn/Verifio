@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, ChartIcon } from '@/components/Icons';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
-import type { User, PlanTier } from '@/lib/types';
+import type { User, PlanTier, VerificationOrder } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
 
 interface SelectableItem {
@@ -13,7 +13,6 @@ interface SelectableItem {
   name: string;
 }
 
-// Match popular items by name (case-insensitive) since IDs are numeric from SMSPool
 const POPULAR_SERVICE_NAMES = ['google', 'whatsapp', 'telegram', 'discord', 'facebook', 'instagram', 'twitter', 'microsoft'];
 const POPULAR_COUNTRY_NAMES = ['united states', 'united kingdom', 'canada', 'australia', 'germany', 'france', 'netherlands', 'sweden'];
 
@@ -48,10 +47,12 @@ function PickerModal({
   );
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+function formatTime(ms: number): string {
+  if (ms <= 0) return '00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function DashboardPage() {
@@ -66,11 +67,10 @@ export default function DashboardPage() {
   const [countries, setCountries] = useState<SelectableItem[]>(SUPPORTED_COUNTRIES.map(c => ({ id: c.code, name: c.name })));
   const [listsLoading, setListsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<PlanTier>('monthly');
-  const [orderResult, setOrderResult] = useState<{
-    id: string; phoneNumber: string; rawNumber?: string; service: string; country: string; status: string; cost: number; expiresAt: string;
-  } | null>(null);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [checkingCode, setCheckingCode] = useState(false);
+
+  // Multi-order state
+  const [activeOrders, setActiveOrders] = useState<VerificationOrder[]>([]);
+  
   const [statusMessage, setStatusMessage] = useState('');
   const [working, setWorking] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
@@ -79,31 +79,42 @@ export default function DashboardPage() {
   const [showAllCountries, setShowAllCountries] = useState(false);
   const [pricing, setPricing] = useState<{ basePrice: number; displayPrice: number; successRate?: number } | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [copiedNumber, setCopiedNumber] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
+  
+  const [now, setNow] = useState(Date.now());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
 
-  const handleCopyNumber = (num: string) => {
-    navigator.clipboard.writeText(num);
-    setCopiedNumber(true);
-    setTimeout(() => setCopiedNumber(false), 2000);
-  };
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Fetch User and Active Orders
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndOrders = async () => {
       try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) { const data = await res.json(); setUser(data.user); }
-        else { router.push('/login'); }
-      } catch { router.push('/login'); }
+        const userRes = await fetch('/api/auth/me');
+        if (userRes.ok) { 
+          const data = await userRes.json(); 
+          setUser(data.user); 
+        } else { 
+          router.push('/login'); 
+          return;
+        }
+
+        const ordersRes = await fetch('/api/orders');
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          const active = (data.orders || []).filter((o: VerificationOrder) => o.status === 'waiting_for_code');
+          setActiveOrders(active);
+        }
+      } catch { 
+        router.push('/login'); 
+      }
       finally { setLoading(false); }
     };
-    fetchUser();
+    fetchUserAndOrders();
   }, [router]);
 
   useEffect(() => {
@@ -138,18 +149,45 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [selectedService, selectedCountry, activeTab]);
 
-  // Countdown timer — always calculates from order's actual expiresAt, never resets
+  // Global timer update
   useEffect(() => {
-    if (!orderResult?.expiresAt) { setTimeLeft(null); return; }
-    const update = () => setTimeLeft(Math.max(0, Math.floor((new Date(orderResult.expiresAt).getTime() - Date.now()) / 1000)));
-    update();
-    const interval = setInterval(update, 1000);
+    const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, [orderResult]);
+  }, []);
+
+  // Handle auto-cancellations
+  const handleCancelOrder = useCallback(async (orderId: string) => {
+    try {
+      await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
+      setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+      
+      // Update balance
+      const userRes = await fetch('/api/auth/me');
+      if (userRes.ok) {
+        const data = await userRes.json();
+        setUser(data.user);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    activeOrders.forEach(order => {
+      const timeLeft = new Date(order.expiresAt).getTime() - now;
+      if (timeLeft <= 0) {
+        handleCancelOrder(order.id);
+      }
+    });
+  }, [now, activeOrders, handleCancelOrder]);
 
   const handleOrder = useCallback(async () => {
     if (!selectedService || !selectedCountry) { setStatusMessage('Please select a service and country.'); return; }
-    setWorking(true); setStatusMessage('Ordering number...'); setOrderResult(null); setVerificationCode(''); setTimeLeft(null);
+    if (activeOrders.length >= 5) { setStatusMessage('Limit of 5 active orders reached.'); return; }
+
+    setWorking(true); setStatusMessage('Ordering number...'); 
     try {
       const endpoint = activeTab === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
       const body: Record<string, string> = { country: selectedCountry, service: selectedService };
@@ -157,42 +195,63 @@ export default function DashboardPage() {
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) { setStatusMessage(data.error || 'Failed to order.'); setWorking(false); return; }
-      setOrderResult(data.order);
-      setStatusMessage(`Number acquired. Use ${data.order.phoneNumber} to receive your code.`);
-      if (data.order.expiresAt) { const expiry = new Date(data.order.expiresAt).getTime(); setTimeLeft(Math.max(0, Math.floor((expiry - Date.now()) / 1000))); }
+      
+      setActiveOrders(prev => [data.order, ...prev]);
+      setStatusMessage(`Number acquired.`);
       trackEvent('Verification Ordered', { type: activeTab, service: selectedService, country: selectedCountry, cost: data.order.cost, plan: activeTab === 'rental' ? selectedPlan : undefined });
+      
+      // Update balance
+      setUser(prev => prev ? { ...prev, balance: prev.balance - data.order.cost } : prev);
     } catch { setStatusMessage('An unexpected error occurred.'); }
     finally { setWorking(false); }
-  }, [selectedService, selectedCountry, selectedPlan, activeTab]);
+  }, [selectedService, selectedCountry, selectedPlan, activeTab, activeOrders.length]);
 
-  const handleCheckCode = useCallback(async () => {
-    if (!orderResult) return;
-    setCheckingCode(true); setStatusMessage('Checking for verification code...');
+  const handleCheckCode = useCallback(async (orderId: string) => {
+    const order = activeOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    setCheckingOrderId(orderId); setStatusMessage('Checking code...');
     try {
-      const endpoint = activeTab === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
-      const res = await fetch(`${endpoint}?orderId=${orderResult.id}`);
+      const endpoint = order.type === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
+      const res = await fetch(`${endpoint}?orderId=${orderId}`);
       const data = await res.json();
-      if (!res.ok) { setStatusMessage(data.error || 'Failed to check code.'); setCheckingCode(false); return; }
+      
+      if (!res.ok) { 
+        setStatusMessage(data.error || 'Failed to check code.'); 
+        setCheckingOrderId(null); 
+        return; 
+      }
+      
       if (data.status === 'completed' && data.code) {
-        setVerificationCode(data.code); setStatusMessage('Verification code received!'); setTimeLeft(null);
-        trackEvent('Verification Code Received', { type: activeTab, service: orderResult.service, country: orderResult.country });
-      } else if (data.status === 'expired' || data.status === 'refunded') {
-        setStatusMessage(data.message || 'Order expired. Balance refunded.'); setOrderResult(null); setTimeLeft(null);
-      } else { setStatusMessage('Code not yet received. Keep waiting...'); }
+        setStatusMessage(`Code received: ${data.code}`);
+        setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+        trackEvent('Verification Code Received', { type: order.type, service: order.service, country: order.country });
+      } else if (data.status === 'expired' || data.status === 'cancelled' || data.status === 'refunded') {
+        setStatusMessage(data.message || 'Order ended. Balance refunded.'); 
+        setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+        
+        // Update balance
+        const userRes = await fetch('/api/auth/me');
+        if (userRes.ok) {
+          const data = await userRes.json();
+          setUser(data.user);
+        }
+      } else { 
+        setStatusMessage('Code not yet received. Keep waiting...'); 
+      }
     } catch { setStatusMessage('Failed to check for code.'); }
-    finally { setCheckingCode(false); }
-  }, [orderResult, activeTab]);
+    finally { setCheckingOrderId(null); }
+  }, [activeOrders]);
 
-  const handleCancelOrder = useCallback(async () => {
-    if (!orderResult) return;
+  const handleManualCancel = async (orderId: string) => {
     setWorking(true);
-    try {
-      const endpoint = activeTab === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
-      await fetch(`${endpoint}?orderId=${orderResult.id}`, { method: 'DELETE' });
-      setOrderResult(null); setVerificationCode(''); setStatusMessage('Order cancelled.'); setTimeLeft(null);
-    } catch { setStatusMessage('Failed to cancel order.'); }
-    finally { setWorking(false); }
-  }, [orderResult, activeTab]);
+    await handleCancelOrder(orderId);
+    setWorking(false);
+    setStatusMessage('Order cancelled and refunded.');
+  };
+
+  const getServiceName = (id: string) => services.find(s => s.id === id)?.name || id;
+  const getCountryName = (id: string) => countries.find(c => c.id === id)?.name || id;
 
   const popularServices = services.filter(s => POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
   const otherServices = services.filter(s => !POPULAR_SERVICE_NAMES.includes(s.name.toLowerCase()));
@@ -215,9 +274,8 @@ export default function DashboardPage() {
       <div className="stats-grid">
         {[
           { label: 'Balance', value: `$${user.balance.toFixed(2)}`, Icon: WalletIcon },
-          { label: 'Total Orders', value: '0', Icon: ClipboardIcon },
-          { label: 'Active Rentals', value: '0', Icon: PhoneIcon },
-          { label: 'Completed', value: '0', Icon: ChartIcon, color: true },
+          { label: 'Active Orders', value: activeOrders.length.toString(), Icon: ClipboardIcon },
+          { label: 'Completed', value: '—', Icon: ChartIcon, color: true },
         ].map(stat => (
           <div key={stat.label} className="stat-card">
             <div className="stat-card__header"><stat.Icon className="icon-md stat-card__icon" /><span className="stat-card__label">{stat.label}</span></div>
@@ -231,7 +289,7 @@ export default function DashboardPage() {
             <h2 className="dashboard-form-card__title">New Verification</h2>
             <div className="verification-tabs">
               {(['sms', 'voice', 'rental'] as const).map(tab => (
-                <button key={tab} onClick={() => { setActiveTab(tab); setOrderResult(null); setVerificationCode(''); setTimeLeft(null); }}
+                <button key={tab} onClick={() => { setActiveTab(tab); }}
                   className={`verification-tab ${activeTab === tab ? 'verification-tab--active' : ''}`}>
                   {tab === 'sms' && <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
                   {tab === 'voice' && <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>}
@@ -281,39 +339,54 @@ export default function DashboardPage() {
                   : <span className="pricing-display__unavailable">Price unavailable</span>}
               </div>
             )}
-            <button onClick={handleOrder} disabled={working || !selectedService || !selectedCountry} className="dashboard-submit">
+            <button onClick={handleOrder} disabled={working || !selectedService || !selectedCountry || activeOrders.length >= 5} className="dashboard-submit">
               {working ? 'Processing...' : `Get ${activeTab === 'rental' ? 'Rental' : activeTab === 'voice' ? 'Voice' : 'SMS'} Number`}
             </button>
+            {activeOrders.length >= 5 && <p className="text-red-500 text-sm mt-2 text-center font-medium">You have reached the limit of 5 active orders.</p>}
             {statusMessage && <div className={`status-msg ${statusModifier}`}>{statusMessage}</div>}
-            {orderResult && (
-              <div className="active-order">
-                <h3 className="active-order__title">Active Order{timeLeft !== null && timeLeft > 0 && <span className="active-order__timer"> — {formatTime(timeLeft)} remaining</span>}</h3>
-                <div className="active-order__grid">
-                  <div>
-                    <div className="active-order__field-label">Phone Number</div>
-                    <div className="active-order__phone-row">
-                      <span className="active-order__phone">{orderResult.phoneNumber}</span>
-                      <button onClick={() => handleCopyNumber(orderResult.rawNumber || String(orderResult.phoneNumber))} className="copy-btn" title="Copy Phone Number">
-                        {copiedNumber ? <span className="copy-btn__label">Copied!</span> : <svg className="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
+          </div>
+        </div>
+
+        {/* Active Orders Sidebar */}
+        <div className="active-orders-column">
+          {activeOrders.length > 0 ? (
+            <div className="active-orders-list">
+              {activeOrders.map(order => {
+                const timeLeft = new Date(order.expiresAt).getTime() - now;
+                return (
+                  <div key={order.id} className="active-order">
+                    <div className="active-order__header">
+                      <h3 className="active-order__title">{getServiceName(order.service)} <span className="active-order__country">({getCountryName(order.country)})</span></h3>
+                      {timeLeft > 0 && <span className="active-order__timer font-mono">{formatTime(timeLeft)}</span>}
+                    </div>
+                    <div className="active-order__grid">
+                      <div>
+                        <div className="active-order__field-label">Phone Number</div>
+                        <div className="active-order__phone-row">
+                          <span className="active-order__phone">{order.phoneNumber}</span>
+                          <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="copy-btn" title="Copy">
+                            {copiedId === order.id ? <span className="copy-btn__label">Copied!</span> : <svg className="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
+                          </button>
+                        </div>
+                      </div>
+                      <div><div className="active-order__field-label">Cost</div><div className="active-order__cost">${order.cost.toFixed(2)}</div></div>
+                    </div>
+                    <div className="active-order__actions">
+                      <button onClick={() => handleCheckCode(order.id)} disabled={checkingOrderId === order.id} className="check-code-btn">
+                        {checkingOrderId === order.id ? <span className="check-code-btn__inner"><SpinnerIcon className="icon-md" /></span> : 'Check Code'}
                       </button>
+                      <button onClick={() => handleManualCancel(order.id)} disabled={working} className="cancel-btn">Cancel</button>
                     </div>
                   </div>
-                  <div><div className="active-order__field-label">Cost</div><div className="active-order__cost">${orderResult.cost.toFixed(2)}</div></div>
-                </div>
-                {verificationCode ? (
-                  <div className="code-display">
-                    <div><div className="code-display__label">Verification Code</div><div className="code-display__value">{verificationCode}</div></div>
-                    <button onClick={() => handleCopyCode(verificationCode)} className="code-display__copy-btn">{copiedCode ? 'Copied!' : 'Copy Code'}</button>
-                  </div>
-                ) : (
-                  <button onClick={handleCheckCode} disabled={checkingCode} className="check-code-btn">
-                    {checkingCode ? <span className="check-code-btn__inner"><SpinnerIcon className="icon-md" /> Checking...</span> : 'Check for Code'}
-                  </button>
-                )}
-                <button onClick={handleCancelOrder} disabled={working} className="cancel-btn">Cancel Order</button>
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="active-order-empty">
+              <ClipboardIcon className="icon-xl active-order-empty__icon" />
+              <p>No active verifications.</p>
+            </div>
+          )}
         </div>
       </div>
       {showAllServices && <PickerModal items={services} search={serviceSearch} onSearchChange={setServiceSearch} selected={selectedService} onSelect={setSelectedService} onClose={() => setShowAllServices(false)} label="All Services" />}
