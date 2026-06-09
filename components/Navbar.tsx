@@ -13,6 +13,7 @@ export function Navbar() {
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -33,6 +34,9 @@ export function Navbar() {
           setUser(data.user);
         }
       } catch { /* not logged in */ }
+      finally {
+        setIsLoading(false);
+      }
     };
     checkAuth();
   }, [isAuthPage]);
@@ -65,7 +69,9 @@ export function Navbar() {
   // Don't render navbar on auth pages — keep them clean
   if (isAuthPage) return null;
 
-  const navbarClass = scrolled ? 'navbar navbar--scrolled' : 'navbar navbar--transparent';
+  // Always use solid background on dashboard pages to prevent text collision
+  const isDashboard = pathname.startsWith('/dashboard');
+  const navbarClass = (scrolled || isDashboard) ? 'navbar navbar--scrolled' : 'navbar navbar--transparent';
 
   return (
     <nav className={navbarClass}>
@@ -78,7 +84,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav links */}
-          {!user ? (
+          {!isLoading && !user ? (
             <div className="navbar__links">
               {[
                 { href: '/#features', label: 'Features' },
@@ -94,23 +100,27 @@ export function Navbar() {
 
           {/* Right section */}
           <div className="navbar__actions">
-            {/* Theme toggle — only shown when NOT logged in */}
-            {!user && (
-              <button
-                onClick={toggleTheme}
-                className="theme-toggle"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <SunIcon className="icon-md" />
-                ) : (
-                  <MoonIcon className="icon-md" />
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+            ) : (
+              <>
+                {/* Theme toggle — only shown when NOT logged in */}
+                {!user && (
+                  <button
+                    onClick={toggleTheme}
+                    className="theme-toggle"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === 'dark' ? (
+                      <SunIcon className="icon-md" />
+                    ) : (
+                      <MoonIcon className="icon-md" />
+                    )}
+                  </button>
                 )}
-              </button>
-            )}
 
-            {/* User menu / auth buttons */}
-            {user ? (
+                {/* User menu / auth buttons */}
+                {user ? (
               <div className="user-menu" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -170,7 +180,7 @@ export function Navbar() {
             )}
 
             {/* Mobile menu toggle */}
-            {!user && (
+            {!isLoading && !user && (
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="mobile-toggle"
@@ -178,6 +188,8 @@ export function Navbar() {
               >
                 {menuOpen ? <XIcon className="icon-md" /> : <MenuIcon className="icon-md" />}
               </button>
+            )}
+            </>
             )}
           </div>
         </div>
