@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, ClipboardIcon, WalletIcon } from '@/components/Icons';
+import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon } from '@/components/Icons';
+import { Combobox } from '@/components/Combobox';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier, VerificationOrder } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
@@ -291,63 +292,23 @@ export default function DashboardPage() {
 
             {/* Selectors */}
             <div className="dash-selectors">
-              <div className="dash-selector">
-                <label className="dash-label">Service</label>
-                <input
-                  type="text"
-                  placeholder="Search services..."
-                  className="dash-input"
-                  value={serviceSearch}
-                  onChange={(e) => setServiceSearch(e.target.value)}
-                />
-                <div className="dash-list">
-                  {listsLoading ? (
-                    <div className="p-4 text-center text-sm text-gray-500">Loading services...</div>
-                  ) : filteredServices.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-gray-500">No services found</div>
-                  ) : (
-                    filteredServices.map(svc => (
-                      <button
-                        key={svc.id}
-                        onClick={() => setSelectedService(svc.id)}
-                        className={`dash-list__item ${selectedService === svc.id ? 'dash-list__item--active' : ''}`}
-                      >
-                        {svc.name}
-                        {selectedService === svc.id && <span>✓</span>}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+              <Combobox
+                label="Service"
+                items={filteredServices}
+                selectedId={selectedService}
+                onSelect={setSelectedService}
+                placeholder="Select a service..."
+                loading={listsLoading}
+              />
 
-              <div className="dash-selector">
-                <label className="dash-label">Country</label>
-                <input
-                  type="text"
-                  placeholder="Search countries..."
-                  className="dash-input"
-                  value={countrySearch}
-                  onChange={(e) => setCountrySearch(e.target.value)}
-                />
-                <div className="dash-list">
-                  {listsLoading ? (
-                    <div className="p-4 text-center text-sm text-gray-500">Loading countries...</div>
-                  ) : filteredCountries.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-gray-500">No countries found</div>
-                  ) : (
-                    filteredCountries.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelectedCountry(c.id)}
-                        className={`dash-list__item ${selectedCountry === c.id ? 'dash-list__item--active' : ''}`}
-                      >
-                        {c.name}
-                        {selectedCountry === c.id && <span>✓</span>}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+              <Combobox
+                label="Country"
+                items={filteredCountries}
+                selectedId={selectedCountry}
+                onSelect={setSelectedCountry}
+                placeholder="Select a country..."
+                loading={listsLoading}
+              />
             </div>
 
             {activeTab === 'rental' && (
@@ -410,45 +371,54 @@ export default function DashboardPage() {
                 {activeOrders.map(order => {
                   const timeLeft = new Date(order.expiresAt).getTime() - now;
                   return (
-                    <div key={order.id} className="dash-active-card">
-                      <div className="dash-active-card__header">
+                    <div key={order.id} className="relative bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow mb-4">
+                      {/* Accent top border */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-xl opacity-80" />
+                      
+                      <div className="flex justify-between items-start mb-4 mt-1">
                         <div>
-                          <div className="dash-active-card__service">{getServiceName(order.service)}</div>
-                          <div className="dash-active-card__country">{getCountryName(order.country)}</div>
-                        </div>
-                        {timeLeft > 0 && <div className="dash-active-card__timer">{formatTime(timeLeft)}</div>}
-                      </div>
-
-                      <div className="dash-active-card__body">
-                        <div className="dash-active-card__row">
-                          <span className="dash-active-card__label">Phone Number</span>
-                          <div className="dash-active-card__number-wrap">
-                            <span className="dash-active-card__number">{order.phoneNumber}</span>
-                            <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                              {copiedId === order.id ? <span className="text-green-500 text-xs font-bold uppercase tracking-wider">Copied</span> : <ClipboardIcon className="w-4 h-4" />}
-                            </button>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{getServiceName(order.service)}</h3>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-gray-100 dark:bg-gray-800 text-gray-500">{order.type}</span>
                           </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 capitalize">{getCountryName(order.country)}</p>
                         </div>
-                        <div className="dash-active-card__row">
-                          <span className="dash-active-card__label">Cost</span>
-                          <span className="dash-active-card__cost">${order.cost.toFixed(2)}</span>
+                        {timeLeft > 0 && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-mono font-medium tracking-tight">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            {formatTime(timeLeft)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 mb-4 border border-gray-100 dark:border-gray-700">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Phone Number</span>
+                          <span className="text-xs font-medium text-gray-900 dark:text-white">${order.cost.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl font-mono font-bold tracking-widest text-gray-900 dark:text-white">{order.phoneNumber}</span>
+                          <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-sm transition-all hover:border-indigo-200">
+                            {copiedId === order.id ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="dash-active-card__actions">
+                      <div className="grid grid-cols-2 gap-2">
                         <button 
                           onClick={() => handleCheckCode(order.id)} 
                           disabled={checkingOrderId === order.id} 
-                          className="dash-btn-secondary"
+                          className="flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-semibold text-sm rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
                         >
-                          {checkingOrderId === order.id ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : 'Check SMS'}
+                          {checkingOrderId === order.id ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : null}
+                          {checkingOrderId === order.id ? 'Checking...' : 'Check SMS'}
                         </button>
                         <button 
                           onClick={() => handleManualCancel(order.id)} 
                           disabled={working} 
-                          className="dash-btn-danger"
+                          className="flex items-center justify-center py-2 px-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 font-medium text-sm rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
                         >
-                          Cancel & Refund
+                          Cancel
                         </button>
                       </div>
                     </div>
