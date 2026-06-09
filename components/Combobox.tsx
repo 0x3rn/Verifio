@@ -67,8 +67,10 @@ export function Combobox({ label, items, selectedId, onSelect, placeholder, load
                 <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--muted)', fontSize: '0.8125rem' }}>No results found</div>
               ) : (
                 filteredItems.map(item => (
-                  <button
+                  <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       onSelect(item.id);
                       setOpen(false);
@@ -78,7 +80,7 @@ export function Combobox({ label, items, selectedId, onSelect, placeholder, load
                   >
                     <span>{item.name}</span>
                     {selectedId === item.id && <CheckIcon className="icon-sm" />}
-                  </button>
+                  </div>
                 ))
               )}
             </div>

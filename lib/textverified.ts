@@ -13,32 +13,33 @@ async function getToken() {
     throw new Error('Textverified credentials not configured in .env');
   }
 
-  const res = await fetch('https://www.textverified.com/api/SimpleToken', {
+  const res = await fetch('https://www.textverified.com/api/pub/v2/auth', {
     method: 'POST',
     headers: {
-      'X-SimpleToken-Email': email,
-      'X-SimpleToken-Password': password,
+      'X-API-USERNAME': email,
+      'X-API-KEY': password,
+      'Content-Type': 'application/json'
     },
   });
 
   if (!res.ok) {
-    throw new Error('Failed to authenticate with Textverified');
+    throw new Error('Failed to authenticate with Textverified API V2');
   }
 
   const data = await res.json();
   cachedToken = data.bearerToken;
-  // Token usually valid for 24h, cache it for 23h
-  tokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000;
+  // Buffer token expiration by 60 seconds
+  tokenExpiresAt = new Date(data.expiration).getTime() - 60000;
   return cachedToken;
 }
 
 async function textverifiedRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = await getToken();
-  const url = `https://www.textverified.com/api${endpoint}`;
+  const url = `https://www.textverified.com${endpoint}`;
   
   const headers = new Headers(options.headers);
   headers.set('Authorization', `Bearer ${token}`);
-  if (!headers.has('Content-Type') && options.method !== 'GET') {
+  if (!headers.has('Content-Type') && options.method && options.method !== 'GET') {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -48,59 +49,72 @@ async function textverifiedRequest<T>(endpoint: string, options: RequestInit = {
     throw new Error(`Textverified error: ${errorText}`);
   }
 
-  return res.json() as Promise<T>;
-}
-
-let cachedTargets: any[] | null = null;
-
-export async function resolveTextVerifiedTargetId(serviceName: string): Promise<string> {
-  if (!cachedTargets) {
-    cachedTargets = await textverifiedRequest<any[]>('/Targets');
+  if (res.status === 201) {
+    const location = res.headers.get('Location');
+    if (location) {
+      return { location } as any;
+    }
   }
-  const target = cachedTargets.find(t => t.name.toLowerCase() === serviceName.toLowerCase());
-  if (!target) {
-    throw new Error(`Service ${serviceName} not supported on Textverified.`);
-  }
-  return target.targetId.toString();
+
+  const text = await res.text();
+  if (!text) return {} as T;
+  return JSON.parse(text) as T;
 }
 
 export async function orderTextVerifiedCode(serviceName: string) {
-  const targetId = await resolveTextVerifiedTargetId(serviceName);
-  
-  // POST /api/Verifications
-  const data = await textverifiedRequest<any>('/Verifications', {
+  // POST /api/pub/v2/verifications
+  const createRes = await textverifiedRequest<any>('/api/pub/v2/verifications', {
     method: 'POST',
-    body: JSON.stringify({ id: Number(targetId) })
+    body: JSON.stringify({ 
+      serviceName: serviceName.toLowerCase(), 
+      capability: 'sms' 
+    })
   });
+  
+  if (!createRes.location) {
+    throw new Error('Failed to get Location header from Textverified');
+  }
+  
+  // Follow the Location header to get verification details
+  const detailsUrl = new URL(createRes.location, 'https://www.textverified.com').pathname;
+  const details = await textverifiedRequest<any>(detailsUrl);
 
-  // data will contain id (order id), number, cost
   return {
     success: 1,
-    order_id: data.id,
-    number: data.number,
-    cost: data.cost
+    order_id: details.id,
+    number: details.number,
+    cost: details.totalCost
   };
 }
 
 export async function checkTextVerifiedCode(orderId: string) {
-  const data = await textverifiedRequest<any>(`/Verifications/${orderId}`);
+  const data = await textverifiedRequest<any>(`/api/pub/v2/verifications/${orderId}`);
   
-  // status: Pending, Completed, Cancelled, Refunded, TimeLimitExceeded
   let mappedStatus = 1; // pending
-  if (data.status === 'Completed') mappedStatus = 3; // completed
-  else if (data.status === 'Cancelled' || data.status === 'Refunded' || data.status === 'TimeLimitExceeded') mappedStatus = 4; // cancelled
+  if (data.state === 'verificationCompleted') mappedStatus = 3;
+  else if (data.state === 'verificationCanceled' || data.state === 'verificationReported' || data.state === 'verificationTimedOut' || data.state === 'verificationRefunded') mappedStatus = 4;
+
+  let code = '';
+  if (mappedStatus === 3 || data.state === 'verificationPending') {
+    // Try to fetch SMS for this verification
+    const smsData = await textverifiedRequest<any>(`/api/pub/v2/sms?reservationId=${orderId}`);
+    if (smsData && smsData.data && smsData.data.length > 0) {
+      code = smsData.data[0].code || smsData.data[0].text || '';
+      mappedStatus = 3; // Code received
+    }
+  }
 
   return {
     success: mappedStatus === 3 ? 1 : 0,
     status: mappedStatus,
-    code: data.code || '',
-    sms: data.sms || ''
+    code: code,
+    sms: code
   };
 }
 
 export async function cancelTextVerifiedOrder(orderId: string) {
-  await textverifiedRequest<any>(`/Verifications/${orderId}/Cancel`, {
-    method: 'PUT'
+  await textverifiedRequest<any>(`/api/pub/v2/verifications/${orderId}/cancel`, {
+    method: 'POST'
   });
   return true;
 }

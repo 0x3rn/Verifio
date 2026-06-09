@@ -293,7 +293,6 @@
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
   z-index: 100;
-  overflow: hidden;
   animation: fadeInScale 0.2s ease-out forwards;
 }
 .combobox-search-wrap {
@@ -320,8 +319,6 @@
   overflow-y: auto;
   padding: 0.25rem;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
 }
 @media (min-width: 640px) {
   .combobox-list {
