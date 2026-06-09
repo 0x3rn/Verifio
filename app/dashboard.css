@@ -82,7 +82,8 @@
 
 @media (min-width: 1024px) {
   .dash-grid {
-    grid-template-columns: 500px 1fr;
+    grid-template-columns: 1fr 380px;
+    align-items: flex-start;
   }
 }
 
@@ -315,9 +316,17 @@
   box-shadow: 0 0 0 1px var(--input-focus);
 }
 .combobox-list {
-  max-height: 220px;
+  max-height: 280px;
   overflow-y: auto;
   padding: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+@media (min-width: 640px) {
+  .combobox-list {
+    max-height: 400px;
+  }
 }
 .combobox-item {
   display: flex;
