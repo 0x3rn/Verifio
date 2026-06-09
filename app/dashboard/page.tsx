@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
 import { Combobox } from '@/components/Combobox';
+import { DashboardSkeleton } from '@/components/DashboardSkeleton';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier, VerificationOrder } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
@@ -241,11 +242,7 @@ export default function DashboardPage() {
   const getCountryName = (id: string) => countries.find(c => c.id === id)?.name || id;
 
   if (loading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <SpinnerIcon className="w-8 h-8 text-indigo-500 animate-spin" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const statusModifier = statusMessage.includes('received') ? 'bg-green-50 text-green-700 border-green-200'
