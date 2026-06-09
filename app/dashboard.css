@@ -5,8 +5,14 @@
 .dash-layout {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1rem 1rem;
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+@media (min-width: 640px) {
+  .dash-layout {
+    padding: 2rem 1.5rem;
+  }
 }
 
 .dash-header {
@@ -100,8 +106,14 @@
 }
 
 .dash-panel__header {
-  padding: 1.5rem 1.5rem 1rem;
+  padding: 1rem 1rem 0.75rem;
   border-bottom: 1px solid var(--divider);
+}
+
+@media (min-width: 640px) {
+  .dash-panel__header {
+    padding: 1.5rem 1.5rem 1rem;
+  }
 }
 
 .dash-panel__title {
@@ -111,10 +123,16 @@
 }
 
 .dash-panel__content {
-  padding: 1.5rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .dash-panel__content {
+    padding: 1.5rem;
+  }
 }
 
 .segmented-control {
@@ -185,7 +203,7 @@
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: 16px; /* 16px prevents iOS auto-zoom */
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -253,7 +271,7 @@
   border: 1px solid var(--input-border);
   border-radius: 8px;
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: 16px; /* 16px prevents iOS auto-zoom */
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -288,7 +306,7 @@
   border: 1px solid var(--card-border);
   border-radius: 6px;
   color: var(--foreground);
-  font-size: 0.8125rem;
+  font-size: 16px; /* 16px prevents iOS auto-zoom */
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .combobox-search:focus {
@@ -503,6 +521,7 @@
   font-weight: 700;
   color: var(--foreground);
   letter-spacing: 0.1em;
+  word-break: break-all;
 }
 
 .dash-copy-btn {
