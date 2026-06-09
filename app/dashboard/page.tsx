@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon } from '@/components/Icons';
+import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
 import { Combobox } from '@/components/Combobox';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
 import type { User, PlanTier, VerificationOrder } from '@/lib/types';
@@ -371,52 +371,49 @@ export default function DashboardPage() {
                 {activeOrders.map(order => {
                   const timeLeft = new Date(order.expiresAt).getTime() - now;
                   return (
-                    <div key={order.id} className="relative bg-white dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow mb-4">
-                      {/* Accent top border */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-xl opacity-80" />
-                      
-                      <div className="flex justify-between items-start mb-4 mt-1">
+                    <div key={order.id} className="dash-active-card">
+                      <div className="dash-active-card__header">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{getServiceName(order.service)}</h3>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-gray-100 dark:bg-gray-800 text-gray-500">{order.type}</span>
+                          <div className="dash-active-card__service">
+                            {getServiceName(order.service)}
+                            <span className="dash-active-card__badge">{order.type}</span>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 capitalize">{getCountryName(order.country)}</p>
+                          <div className="dash-active-card__country">{getCountryName(order.country)}</div>
                         </div>
                         {timeLeft > 0 && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-mono font-medium tracking-tight">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          <div className="dash-active-card__timer-wrap">
+                            <span className="dash-pulse-dot" />
                             {formatTime(timeLeft)}
                           </div>
                         )}
                       </div>
 
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 mb-4 border border-gray-100 dark:border-gray-700">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Phone Number</span>
-                          <span className="text-xs font-medium text-gray-900 dark:text-white">${order.cost.toFixed(2)}</span>
+                      <div className="dash-active-card__body">
+                        <div className="dash-active-card__row" style={{ marginBottom: '0.375rem' }}>
+                          <span className="dash-active-card__label">Phone Number</span>
+                          <span className="dash-active-card__cost">${order.cost.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xl font-mono font-bold tracking-widest text-gray-900 dark:text-white">{order.phoneNumber}</span>
-                          <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-sm transition-all hover:border-indigo-200">
-                            {copiedId === order.id ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
+                        <div className="dash-active-card__number-wrap">
+                          <span className="dash-active-card__number">{order.phoneNumber}</span>
+                          <button onClick={() => handleCopy(order.id, order.phoneNumber)} className="dash-copy-btn">
+                            {copiedId === order.id ? <span style={{ color: '#22c55e', display: 'flex' }}><CheckIcon className="icon-sm" /></span> : <ClipboardIcon className="icon-sm" />}
                           </button>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="dash-active-card__actions">
                         <button 
                           onClick={() => handleCheckCode(order.id)} 
                           disabled={checkingOrderId === order.id} 
-                          className="flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-semibold text-sm rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+                          className="dash-btn-secondary"
                         >
-                          {checkingOrderId === order.id ? <SpinnerIcon className="w-4 h-4 animate-spin" /> : null}
+                          {checkingOrderId === order.id ? <SpinnerIcon className="icon-sm animate-spin" /> : <RefreshIcon className="icon-sm" />}
                           {checkingOrderId === order.id ? 'Checking...' : 'Check SMS'}
                         </button>
                         <button 
                           onClick={() => handleManualCancel(order.id)} 
                           disabled={working} 
-                          className="flex items-center justify-center py-2 px-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 font-medium text-sm rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          className="dash-btn-danger"
                         >
                           Cancel
                         </button>

@@ -4,6 +4,7 @@ import React from 'react';
 
 interface IconProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const SunIcon: React.FC<IconProps> = ({ className = 'icon-md' }) => (
