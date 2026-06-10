@@ -154,7 +154,11 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Rental cancelled successfully.' });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to cancel rental.';
+    let message = error instanceof Error ? error.message : 'Failed to cancel rental.';
+    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
+      console.error('DEV_DB_001:', error);
+      message = 'System error: DEV_DB_001';
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

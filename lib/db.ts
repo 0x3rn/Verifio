@@ -6,7 +6,8 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const createPrismaClient = () => {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error('DATABASE_URL is not set. PrismaClient cannot connect to the database.');
+    console.error('DEV_DB_001: DATABASE_URL is not set. PrismaClient cannot connect to the database.');
+    throw new Error('System error: DEV_DB_001');
   }
   const adapter = new PrismaPg({ connectionString: url });
   return new PrismaClient({ adapter });

@@ -71,7 +71,8 @@ async function cryptomusRequest<T>(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Cryptomus API error: ${response.status} - ${errorText}`);
+    console.error(`DEV_CRYPTO_001: Cryptomus API error: ${response.status} - ${errorText}`);
+    throw new Error(`System error: DEV_CRYPTO_001`);
   }
 
   return response.json();

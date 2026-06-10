@@ -126,7 +126,11 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to order SMS verification.';
+    let message = error instanceof Error ? error.message : 'Failed to order SMS verification.';
+    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
+      console.error('DEV_DB_001:', error);
+      message = 'System error: DEV_DB_001';
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -221,7 +225,11 @@ export async function GET(request: NextRequest) {
       status: 'waiting_for_code',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to check SMS code.';
+    let message = error instanceof Error ? error.message : 'Failed to retrieve code.';
+    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
+      console.error('DEV_DB_001:', error);
+      message = 'System error: DEV_DB_001';
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

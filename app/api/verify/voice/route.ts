@@ -102,7 +102,11 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to order voice verification.';
+    let message = error instanceof Error ? error.message : 'Failed to order voice verification.';
+    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
+      console.error('DEV_DB_001:', error);
+      message = 'System error: DEV_DB_001';
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

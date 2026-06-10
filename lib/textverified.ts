@@ -10,7 +10,8 @@ async function getToken() {
   const password = process.env.TEXTVERIFIED_PASSWORD || process.env.TEXTVERIFIED_API_KEY;
 
   if (!email || !password) {
-    throw new Error('Textverified credentials not configured in .env');
+    console.error('DEV_TV_001: Textverified credentials not configured in .env');
+    throw new Error('System error: DEV_TV_001');
   }
 
   const res = await fetch('https://www.textverified.com/api/pub/v2/auth', {
@@ -23,7 +24,8 @@ async function getToken() {
   });
 
   if (!res.ok) {
-    throw new Error('Failed to authenticate with Textverified API V2');
+    console.error(`DEV_TV_002: Failed to authenticate with Textverified API V2. Status: ${res.status}`);
+    throw new Error('System error: DEV_TV_002');
   }
 
   const data = await res.json();
@@ -46,7 +48,8 @@ async function textverifiedRequest<T>(endpoint: string, options: RequestInit = {
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Textverified error: ${errorText}`);
+    console.error(`DEV_TV_003: Textverified error: ${errorText}`);
+    throw new Error(`System error: DEV_TV_003`);
   }
 
   if (res.status === 201) {
@@ -72,7 +75,8 @@ export async function orderTextVerifiedCode(serviceName: string) {
   });
   
   if (!createRes.location) {
-    throw new Error('Failed to get Location header from Textverified');
+    console.error('DEV_TV_004: Failed to get Location header from Textverified');
+    throw new Error('System error: DEV_TV_004');
   }
   
   // Follow the Location header to get verification details
