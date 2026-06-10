@@ -417,7 +417,6 @@
 .dash-active-card {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-top: 3px solid #6366f1;
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: var(--shadow-sm);
