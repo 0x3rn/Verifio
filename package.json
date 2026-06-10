@@ -15,6 +15,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "jose": "^6.2.3",
+    "libphonenumber-js": "^1.13.6",
     "next": "16.2.6",
     "nextjs-toploader": "^3.9.17",
     "nodemailer": "^8.0.9",

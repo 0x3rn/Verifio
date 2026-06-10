@@ -35,24 +35,17 @@ export function applyMarkup(basePrice: number): number {
   return Math.round(basePrice * 1.5 * 100) / 100;
 }
 
-// ---- Phone number formatting ----
-
-const COUNTRY_CODES: Record<string, string> = {
-  US: '+1', GB: '+44', CA: '+1', AU: '+61', DE: '+49', FR: '+33',
-  NL: '+31', SE: '+46', ID: '+62', IN: '+91', PH: '+63', BR: '+55',
-};
+import { parsePhoneNumber, CountryCode } from 'libphonenumber-js';
 
 export function formatPhoneNumber(number: string, countryCode: string): string {
-  const cleaned = String(number).replace(/\D/g, '');
-  const prefix = COUNTRY_CODES[countryCode] || '';
-  if (!prefix) return cleaned;
-  if (cleaned.startsWith('1') && countryCode === 'US') {
-    const area = cleaned.substring(1, 4);
-    const mid = cleaned.substring(4, 7);
-    const last = cleaned.substring(7, 11);
-    return `+1 (${area}) ${mid}-${last}`;
+  try {
+    const phoneNumber = parsePhoneNumber(number, countryCode.toUpperCase() as CountryCode);
+    return phoneNumber.formatInternational();
+  } catch (err) {
+    // Fallback if parsing fails or country code is invalid
+    const cleaned = String(number).replace(/\D/g, '');
+    return `+${cleaned}`;
   }
-  return `${prefix} ${cleaned}`;
 }
 
 // ---- Listing endpoints (cached 1 hour) ----

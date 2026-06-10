@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import { formatPhoneNumber } from './smspool';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
@@ -46,6 +48,7 @@ export async function getOrder(orderId: string): Promise<VerificationOrder | und
 
   return {
     ...order,
+    phoneNumber: formatPhoneNumber(order.phoneNumber, order.country),
     code: order.code || '',
     createdAt: order.createdAt.toISOString(),
     completedAt: order.completedAt ? order.completedAt.toISOString() : null,
@@ -61,6 +64,7 @@ export async function getUserOrders(userId: string): Promise<VerificationOrder[]
 
   return orders.map(order => ({
     ...order,
+    phoneNumber: formatPhoneNumber(order.phoneNumber, order.country),
     code: order.code || '',
     createdAt: order.createdAt.toISOString(),
     completedAt: order.completedAt ? order.completedAt.toISOString() : null,
@@ -81,6 +85,7 @@ export async function updateOrder(orderId: string, updates: Partial<Verification
 
   return {
     ...order,
+    phoneNumber: formatPhoneNumber(order.phoneNumber, order.country),
     code: order.code || '',
     createdAt: order.createdAt.toISOString(),
     completedAt: order.completedAt ? order.completedAt.toISOString() : null,
@@ -114,6 +119,7 @@ export async function getRental(rentalId: string): Promise<RentalNumber | undefi
 
   return {
     ...rental,
+    phoneNumber: formatPhoneNumber(rental.phoneNumber, rental.country),
     startedAt: rental.startedAt.toISOString(),
     expiresAt: rental.expiresAt.toISOString(),
     renewedAt: rental.renewedAt ? rental.renewedAt.toISOString() : null,
@@ -128,6 +134,7 @@ export async function getUserRentals(userId: string): Promise<RentalNumber[]> {
 
   return rentals.map(rental => ({
     ...rental,
+    phoneNumber: formatPhoneNumber(rental.phoneNumber, rental.country),
     startedAt: rental.startedAt.toISOString(),
     expiresAt: rental.expiresAt.toISOString(),
     renewedAt: rental.renewedAt ? rental.renewedAt.toISOString() : null,
@@ -147,6 +154,7 @@ export async function updateRental(rentalId: string, updates: Partial<RentalNumb
 
   return {
     ...rental,
+    phoneNumber: formatPhoneNumber(rental.phoneNumber, rental.country),
     startedAt: rental.startedAt.toISOString(),
     expiresAt: rental.expiresAt.toISOString(),
     renewedAt: rental.renewedAt ? rental.renewedAt.toISOString() : null,
