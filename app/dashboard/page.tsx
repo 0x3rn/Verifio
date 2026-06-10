@@ -316,10 +316,10 @@ export default function DashboardPage() {
                     <button 
                       key={key} 
                       onClick={() => setSelectedPlan(key as PlanTier)} 
-                      className={`p-2 border rounded-lg text-sm transition-colors text-center ${selectedPlan === key ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                      className={`rental-duration-btn ${selectedPlan === key ? 'rental-duration-btn--active' : ''}`}
                     >
-                      <div className="block">{plan.label}</div>
-                      <div className="text-xs opacity-70">{plan.days} days</div>
+                      <div className="rental-duration-btn__label">{plan.label}</div>
+                      <div className="rental-duration-btn__days">{plan.days} days</div>
                     </button>
                   ))}
                 </div>

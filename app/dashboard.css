@@ -626,3 +626,51 @@
   margin-top: 1.5rem;
   text-align: center;
 }
+
+.rental-duration-btn {
+  padding: 0.625rem;
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.rental-duration-btn:hover {
+  border-color: var(--input-focus);
+}
+
+.rental-duration-btn--active {
+  background-color: rgba(99,102,241,0.08);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+.dark .rental-duration-btn--active {
+  background-color: rgba(99,102,241,0.15);
+  border-color: #818cf8;
+  box-shadow: 0 0 0 1px #818cf8;
+}
+
+.rental-duration-btn__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.rental-duration-btn--active .rental-duration-btn__label {
+  color: #6366f1;
+}
+
+.dark .rental-duration-btn--active .rental-duration-btn__label {
+  color: #818cf8;
+}
+
+.rental-duration-btn__days {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.125rem;
+}
+
