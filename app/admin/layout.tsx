@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="dash-layout">
-      <div className="dash-grid" style={{ gridTemplateColumns: '240px 1fr' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
         
         {/* Sidebar */}
         <div className="dash-panel" style={{ height: 'fit-content' }}>

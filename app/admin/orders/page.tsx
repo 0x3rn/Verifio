@@ -45,7 +45,7 @@ export default function AdminOrdersPage() {
       </header>
 
       <div className="dash-panel">
-        <div style={{ overflowX: 'auto', padding: '1rem' }}>
+        <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
             <thead>
               <tr>

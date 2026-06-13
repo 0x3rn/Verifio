@@ -51,7 +51,7 @@ export default function AdminOverviewPage() {
       </header>
 
       {stats && (
-        <div className="dash-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="dash-panel">
             <div className="dash-panel__header">
               <h3 className="dash-panel__title">Total Users</h3>
