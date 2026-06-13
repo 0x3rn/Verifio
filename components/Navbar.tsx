@@ -137,9 +137,16 @@ export function Navbar() {
                       <p className="user-menu__dropdown-name">{user.username}</p>
                       <p className="user-menu__dropdown-email">{user.email || ''}</p>
                     </div>
-                    <Link href="/dashboard" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
+                    <Link href="/dashboard" className="user-menu__dropdown-item" onClick={() => setUserMenuOpen(false)}>
                       <HomeIcon className="icon-md" /> Dashboard
                     </Link>
+                    {user.isAdmin && (
+                      <Link href="/admin" className="user-menu__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                        <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                        </svg> Admin
+                      </Link>
+                    )}
                     <Link href="/dashboard/orders" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <ClipboardIcon className="icon-md" /> Order History
                     </Link>

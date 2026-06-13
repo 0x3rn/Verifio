@@ -6,6 +6,11 @@ import type { User } from './types';
 const TOKEN_COOKIE = 'verifio_token';
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'verifio-super-secret-key-12345');
 
+function checkIsAdmin(username: string): boolean {
+  const adminUsers = process.env.ADMIN_USERS?.split(',').map(u => u.trim().toLowerCase()) || [];
+  return adminUsers.includes(username.toLowerCase());
+}
+
 // Hash password
 async function hashPassword(password: string): Promise<string> {
   const crypto = await import('crypto');
@@ -75,6 +80,7 @@ export async function registerUser(
       email: dbUser.email || undefined,
       name: undefined,
       balance: dbUser.balance,
+      isAdmin: checkIsAdmin(dbUser.username),
       createdAt: dbUser.createdAt.toISOString(),
       updatedAt: dbUser.updatedAt.toISOString(),
     };
@@ -111,6 +117,7 @@ export async function loginUser(
       email: dbUser.email || undefined,
       name: undefined,
       balance: dbUser.balance,
+      isAdmin: checkIsAdmin(dbUser.username),
       createdAt: dbUser.createdAt.toISOString(),
       updatedAt: dbUser.updatedAt.toISOString(),
     };
@@ -142,6 +149,7 @@ export async function getCurrentUser(): Promise<User | null> {
       email: dbUser.email || undefined,
       name: undefined,
       balance: dbUser.balance,
+      isAdmin: checkIsAdmin(dbUser.username),
       createdAt: dbUser.createdAt.toISOString(),
       updatedAt: dbUser.updatedAt.toISOString(),
     };

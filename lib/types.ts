@@ -4,6 +4,7 @@ export interface User {
   email?: string;
   name?: string;
   balance: number;
+  isAdmin?: boolean;
   createdAt: string;
   updatedAt: string;
 }

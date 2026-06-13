@@ -165,6 +165,63 @@ export function generateOrderId(): string {
   return `order_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+// ---- Admin Queries ----
+
+export async function getAllUsers() {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+  return users.map(u => ({
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    balance: u.balance,
+    createdAt: u.createdAt.toISOString(),
+  }));
+}
+
+export async function getSystemStats() {
+  const totalUsers = await prisma.user.count();
+  
+  const users = await prisma.user.findMany({ select: { balance: true } });
+  const totalBalances = users.reduce((acc, user) => acc + user.balance, 0);
+  
+  const activeOrders = await prisma.order.count({
+    where: { status: 'waiting_for_code' },
+  });
+  
+  const activeRentals = await prisma.rental.count({
+    where: { status: 'active' },
+  });
+
+  return {
+    totalUsers,
+    totalBalances,
+    activeOrders,
+    activeRentals,
+  };
+}
+
+export async function getAllOrders() {
+  const orders = await prisma.order.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { username: true } },
+    },
+    take: 100, // Limit to 100 for performance
+  });
+
+  return orders.map(order => ({
+    ...order,
+    phoneNumber: formatPhoneNumber(order.phoneNumber, order.country),
+    code: order.code || '',
+    createdAt: order.createdAt.toISOString(),
+    completedAt: order.completedAt ? order.completedAt.toISOString() : null,
+    expiresAt: order.expiresAt.toISOString(),
+    username: order.user.username,
+  }));
+}
+
 export function generateRentalId(): string {
   return `rental_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
