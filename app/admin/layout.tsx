@@ -45,34 +45,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="dash-layout">
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="dash-grid" style={{ gridTemplateColumns: '240px 1fr' }}>
         
         {/* Sidebar */}
-        <div className="w-full lg:w-64 flex-shrink-0">
-          <div className="dash-panel sticky top-24 p-2">
-            <h2 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 px-4 pt-3">
-              Admin Controls
-            </h2>
-            <nav className="flex flex-col gap-1 pb-2">
-              {navLinks.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-3 ${
-                    pathname === link.href 
-                      ? 'bg-foreground text-background shadow-md transform scale-[1.02]' 
-                      : 'text-foreground/80 hover:bg-foreground/5 hover:text-foreground'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
+        <div className="dash-panel" style={{ height: 'fit-content' }}>
+          <div className="dash-panel__header">
+            <h2 className="dash-panel__title">Admin Controls</h2>
+          </div>
+          <div className="dash-panel__content" style={{ padding: '0.5rem' }}>
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {navLinks.map(link => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="dash-list__item"
+                    style={{
+                      borderRadius: '6px',
+                      borderBottom: 'none',
+                      backgroundColor: isActive ? 'var(--input-bg)' : 'transparent',
+                      color: isActive ? 'var(--foreground)' : 'var(--muted)',
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0">
+        <div style={{ minWidth: 0 }}>
           {children}
         </div>
       </div>
