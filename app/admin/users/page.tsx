@@ -72,39 +72,50 @@ export default function AdminUsersPage() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-6 relative">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">View users and adjust wallet balances.</p>
+    <div className="space-y-8 animate-[fadeIn_0.4s_ease-out_forwards] relative">
+      <header className="dash-header">
+        <div>
+          <h1 className="dash-header__title">User Management</h1>
+          <p className="dash-header__subtitle">View and manage platform users and their wallets.</p>
+        </div>
       </header>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="dash-panel overflow-hidden border-none shadow-xl bg-background/50 backdrop-blur-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Username</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+              <tr className="bg-foreground/5 border-b border-border/50">
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Username</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Email</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Balance</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Joined</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {users.map(u => (
-                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="p-4">
-                    <span className="font-medium text-gray-900 dark:text-white">{u.username}</span>
+            <tbody className="divide-y divide-border/30">
+              {users.map((u, i) => (
+                <tr key={u.id} className="hover:bg-foreground/5 transition-colors group" style={{ animationDelay: `${i * 50}ms` }}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs shadow-md">
+                        {u.username.substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-foreground group-hover:text-indigo-500 transition-colors">{u.username}</span>
+                    </div>
                   </td>
-                  <td className="p-4 text-gray-500 dark:text-gray-400">{u.email || '-'}</td>
-                  <td className="p-4 font-semibold text-green-600 dark:text-green-400">${u.balance.toFixed(2)}</td>
-                  <td className="p-4 text-gray-500 dark:text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="p-4 text-right">
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{u.email || '—'}</td>
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full text-sm">
+                      ${u.balance.toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-right">
                     <button 
                       onClick={() => setSelectedUser(u)}
-                      className="text-sm px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 rounded-lg transition-colors font-medium"
+                      className="text-xs px-4 py-2 bg-foreground text-background hover:bg-indigo-600 hover:text-white hover:shadow-lg hover:-translate-y-0.5 rounded-full transition-all duration-300 font-bold tracking-wide"
                     >
-                      Add Funds
+                      Fund Wallet
                     </button>
                   </td>
                 </tr>
@@ -116,42 +127,42 @@ export default function AdminUsersPage() {
 
       {/* Fund User Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Adjust Balance</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Add funds to <strong className="text-gray-900 dark:text-white">{selectedUser.username}</strong>'s wallet. Use negative numbers to deduct.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="dash-panel p-8 w-full max-w-md shadow-2xl scale-100 animate-[scaleIn_0.2s_ease-out] border-border/50 bg-card">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-foreground tracking-tight">Adjust Balance</h3>
+              <button onClick={() => setSelectedUser(null)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              Adjusting funds for <strong className="text-foreground">{selectedUser.username}</strong>. Use negative values to deduct from their balance.
             </p>
             
-            <form onSubmit={handleAddFunds} className="space-y-4">
+            <form onSubmit={handleAddFunds} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={fundAmount}
-                  onChange={(e) => setFundAmount(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                  placeholder="e.g. 50.00 or -10.00"
-                />
+                <label className="block text-xs font-bold text-muted uppercase tracking-widest mb-2">Amount (USD)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={fundAmount}
+                    onChange={(e) => setFundAmount(e.target.value)}
+                    className="w-full pl-8 pr-4 py-3 bg-background border border-border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-foreground font-semibold shadow-sm transition-all"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setSelectedUser(null)}
-                  className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={funding}
-                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium disabled:opacity-50"
-                >
-                  {funding ? 'Updating...' : 'Confirm'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={funding}
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl transition-all duration-300 font-bold shadow-lg hover:shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
+              >
+                {funding ? 'Processing...' : 'Confirm Adjustment'}
+              </button>
             </form>
           </div>
         </div>

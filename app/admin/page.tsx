@@ -42,32 +42,34 @@ export default function AdminOverviewPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Overview</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">Platform-wide statistics and metrics.</p>
+    <div className="space-y-8 animate-[fadeIn_0.4s_ease-out_forwards]">
+      <header className="dash-header">
+        <div>
+          <h1 className="dash-header__title">Admin Overview</h1>
+          <p className="dash-header__subtitle">Platform-wide statistics and metrics.</p>
+        </div>
       </header>
 
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stats.totalUsers}</p>
+        <div className="dash-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <div className="dash-panel p-6 flex flex-col justify-center transition-all hover:scale-[1.02] hover:shadow-lg">
+            <h3 className="text-sm font-semibold tracking-wider text-muted uppercase">Total Users</h3>
+            <p className="text-4xl font-extrabold text-foreground mt-3">{stats.totalUsers}</p>
           </div>
           
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total User Balances</h3>
-            <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">${stats.totalBalances.toFixed(2)}</p>
+          <div className="dash-panel p-6 flex flex-col justify-center transition-all hover:scale-[1.02] hover:shadow-lg">
+            <h3 className="text-sm font-semibold tracking-wider text-muted uppercase">User Balances</h3>
+            <p className="text-4xl font-extrabold text-foreground mt-3">${stats.totalBalances.toFixed(2)}</p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Active OTP Orders</h3>
-            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">{stats.activeOrders}</p>
+          <div className="dash-panel p-6 flex flex-col justify-center transition-all hover:scale-[1.02] hover:shadow-lg">
+            <h3 className="text-sm font-semibold tracking-wider text-muted uppercase">Active OTPs</h3>
+            <p className="text-4xl font-extrabold text-foreground mt-3">{stats.activeOrders}</p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Rentals</h3>
-            <p className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">{stats.activeRentals}</p>
+          <div className="dash-panel p-6 flex flex-col justify-center transition-all hover:scale-[1.02] hover:shadow-lg">
+            <h3 className="text-sm font-semibold tracking-wider text-muted uppercase">Active Rentals</h3>
+            <p className="text-4xl font-extrabold text-foreground mt-3">{stats.activeRentals}</p>
           </div>
         </div>
       )}

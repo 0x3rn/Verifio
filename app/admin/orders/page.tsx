@@ -36,47 +36,55 @@ export default function AdminOrdersPage() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Global Orders</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-1">View recent verification orders across the platform.</p>
+    <div className="space-y-8 animate-[fadeIn_0.4s_ease-out_forwards] relative">
+      <header className="dash-header">
+        <div>
+          <h1 className="dash-header__title">Global Orders</h1>
+          <p className="dash-header__subtitle">View recent verification orders across the platform.</p>
+        </div>
       </header>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="dash-panel overflow-hidden border-none shadow-xl bg-background/50 backdrop-blur-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Phone Number</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+              <tr className="bg-foreground/5 border-b border-border/50">
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">User</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Service</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Phone Number</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Cost</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-xs font-bold text-muted uppercase tracking-widest">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-border/30">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">No orders found.</td>
+                  <td colSpan={6} className="p-12 text-center text-muted-foreground font-medium">No orders found.</td>
                 </tr>
               ) : (
-                orders.map(order => (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="p-4 font-medium text-gray-900 dark:text-white">{order.username}</td>
-                    <td className="p-4 text-gray-900 dark:text-white capitalize">{order.service}</td>
-                    <td className="p-4 text-gray-500 dark:text-gray-400 font-mono text-sm">{order.phoneNumber}</td>
-                    <td className="p-4 text-gray-900 dark:text-white">${order.cost.toFixed(2)}</td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        order.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                        order.status === 'pending' || order.status === 'waiting_for_code' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400' :
-                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                orders.map((order, i) => (
+                  <tr key={order.id} className="hover:bg-foreground/5 transition-colors group" style={{ animationDelay: `${i * 50}ms` }}>
+                    <td className="px-6 py-4 font-semibold text-foreground">{order.username}</td>
+                    <td className="px-6 py-4">
+                      <span className="capitalize font-medium text-foreground bg-foreground/5 px-3 py-1 rounded-full text-sm">
+                        {order.service}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-mono text-sm tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">{order.phoneNumber}</span>
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-foreground">${order.cost.toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase ${
+                        order.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                        order.status === 'pending' || order.status === 'waiting_for_code' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 animate-pulse' :
+                        'bg-rose-500/10 text-rose-500 border border-rose-500/20'
                       }`}>
                         {order.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-500 dark:text-gray-400 text-sm">
+                    <td className="px-6 py-4 text-muted-foreground text-sm font-medium">
                       {new Date(order.createdAt).toLocaleString()}
                     </td>
                   </tr>
