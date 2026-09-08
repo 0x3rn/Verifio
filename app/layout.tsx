@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NextTopLoader from 'nextjs-toploader';
@@ -66,7 +67,8 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <NextTopLoader
+        <ClerkProvider>
+          <NextTopLoader
           color="#6366f1"
           initialPosition={0.08}
           crawlSpeed={120}
@@ -76,15 +78,16 @@ export default function RootLayout({
           easing="cubic-bezier(0.4, 0, 0.2, 1)"
           speed={400}
           shadow="0 0 10px #6366f1,0 0 5px #6366f1"
-        />
-        <ThemeProvider>
+          />
+          <ThemeProvider>
           <PageViewTracker />
           <div className="body-wrapper">
-            <Navbar />
-            <main className="main-content">{children}</main>
-            <Footer />
+          <Navbar />
+          <main className="main-content">{children}</main>
+          <Footer />
           </div>
-        </ThemeProvider>
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

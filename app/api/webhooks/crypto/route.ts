@@ -1,44 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { creditPaymentIfPending, getPaymentByProviderOrderId } from '@/lib/db';
 import { verifyWebhookSign } from '@/lib/cryptomus';
 
 // Cryptomus sends webhook callbacks when payment status changes
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: unknown = await request.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
+    }
+    const payload = body as Record<string, unknown>;
     const signature = request.headers.get('sign') || '';
 
     // Verify the webhook signature
-    if (!verifyWebhookSign(body, signature)) {
+    if (!verifyWebhookSign(payload, signature)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
-    const { order_id, status, amount } = body;
+    const orderId = typeof payload.order_id === 'string' ? payload.order_id : '';
+    const status = typeof payload.status === 'string' ? payload.status : '';
+    const amount = typeof payload.amount === 'string' || typeof payload.amount === 'number'
+      ? Number(payload.amount)
+      : Number.NaN;
 
     // Only process completed payments
     if (status !== 'paid' && status !== 'paid_over') {
       return NextResponse.json({ message: 'Payment not yet completed' }, { status: 200 });
     }
 
-    // Parse our order ID format: deposit_{userId}_{timestamp}
-    const parts = order_id?.split('_');
-    if (!parts || parts.length < 3 || parts[0] !== 'deposit') {
-      return NextResponse.json({ error: 'Invalid order ID format' }, { status: 400 });
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'Invalid payment amount' }, { status: 400 });
     }
 
-    const userId = parts[1];
+    const payment = await getPaymentByProviderOrderId(orderId);
+    if (!payment) {
+      return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    }
 
-    // Credit the user's balance
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        balance: {
-          increment: parseFloat(amount) || 0,
-        },
-      },
-    });
+    if (Math.abs(payment.amount - amount) > 0.001) {
+      return NextResponse.json({ error: 'Payment amount does not match invoice' }, { status: 400 });
+    }
 
-    return NextResponse.json({ message: 'Payment processed successfully' }, { status: 200 });
+    const result = await creditPaymentIfPending(orderId, amount);
+    if (result === 'amount_mismatch') return NextResponse.json({ error: 'Payment amount does not match invoice' }, { status: 400 });
+    if (result === 'not_found' || result === 'user_not_found') return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    return NextResponse.json({ message: result === 'credited' ? 'Payment processed successfully' : 'Payment already processed' }, { status: 200 });
   } catch (error) {
     console.error('Webhook processing error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

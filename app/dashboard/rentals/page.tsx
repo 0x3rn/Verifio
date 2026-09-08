@@ -15,6 +15,7 @@ export default function RentalsPage() {
   const [expandedRental, setExpandedRental] = useState<string | null>(null);
   const [rentalCodes, setRentalCodes] = useState<Record<string, Array<{ sms: string; code: string; full_sms: string; number: string; time: string }>>>({});
   const [loadingCodes, setLoadingCodes] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const [copiedRentalId, setCopiedRentalId] = useState<string | null>(null);
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<string | null>(null);
@@ -46,6 +47,11 @@ export default function RentalsPage() {
     };
     fetchRentals();
   }, [router]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const handleViewCodes = useCallback(async (rentalId: string) => {
     if (expandedRental === rentalId) { setExpandedRental(null); return; }
@@ -150,7 +156,7 @@ export default function RentalsPage() {
             const service = SUPPORTED_SERVICES.find((s) => s.id === rental.service);
             const country = SUPPORTED_COUNTRIES.find((c) => c.code === rental.country);
             const plan = PLAN_DURATIONS[rental.plan as keyof typeof PLAN_DURATIONS];
-            const daysLeft = Math.max(0, Math.ceil((new Date(rental.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+            const daysLeft = Math.max(0, Math.ceil((new Date(rental.expiresAt).getTime() - now) / (1000 * 60 * 60 * 24)));
             const isActive = rental.status === 'active';
             const progressPercent = plan ? Math.min(100, ((plan.days - daysLeft) / plan.days) * 100) : 0;
 

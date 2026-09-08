@@ -82,8 +82,8 @@ export default function PrivacyPage() {
           We implement appropriate technical and organizational security measures to protect your personal information, including:
         </p>
         <ul className="legal-page__list">
-          <li>Password hashing using industry-standard algorithms (bcrypt)</li>
-          <li>JWT-based authentication with HTTP-only cookies</li>
+          <li>Clerk-managed authentication, password protection, and secure session handling</li>
+          <li>Rate limits and origin checks around sensitive and paid actions</li>
           <li>HTTPS encryption for all data in transit</li>
           <li>Regular security review of our codebase and dependencies</li>
         </ul>

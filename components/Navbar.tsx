@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/app/providers';
+import { useClerk } from '@clerk/nextjs';
 import { SunIcon, MoonIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { signOut } = useClerk();
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
@@ -60,10 +62,9 @@ export function Navbar() {
   }, [userMenuOpen, isAuthPage]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await signOut({ redirectUrl: '/' });
     setUser(null);
     setUserMenuOpen(false);
-    window.location.href = '/';
   };
 
   // Don't render navbar on auth pages — keep them clean
@@ -71,7 +72,7 @@ export function Navbar() {
 
   // Always use solid background on dashboard pages to prevent text collision
   const isDashboard = pathname.startsWith('/dashboard');
-  const navbarClass = (scrolled || isDashboard) ? 'navbar navbar--scrolled' : 'navbar navbar--transparent';
+  const navbarClass = (scrolled || isDashboard) ? 'navbar v-nav navbar--scrolled' : 'navbar v-nav navbar--transparent';
 
   return (
     <nav className={navbarClass}>
@@ -101,7 +102,7 @@ export function Navbar() {
           {/* Right section */}
           <div className="navbar__actions">
             {isLoading ? (
-              <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+              <div className="v-nav__loading" aria-label="Loading account" />
             ) : (
               <>
                 {/* Theme toggle — only shown when NOT logged in */}

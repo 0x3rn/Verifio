@@ -1,418 +1,99 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ShieldIcon, CheckCircleIcon, TargetIcon, LockIcon } from '@/components/Icons';
-import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
+import { CheckCircleIcon, LockIcon, ShieldIcon, TargetIcon } from '@/components/Icons';
+import { PLAN_DURATIONS, SUPPORTED_COUNTRIES, SUPPORTED_SERVICES } from '@/lib/types';
 
-const tabIcons: Record<string, React.ReactNode> = {
-  sms: (
-    <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-    </svg>
-  ),
-  voice: (
-    <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-    </svg>
-  ),
-  rental: (
-    <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  ),
+type VerificationMode = 'sms' | 'voice' | 'rental';
+
+const modes: Record<VerificationMode, { eyebrow: string; title: string; description: string; details: string[]; label: string }> = {
+  sms: {
+    eyebrow: 'One-time access', title: 'SMS Verification', label: 'SMS',
+    description: 'Get a disposable phone number and receive verification codes via SMS. Works with Google, WhatsApp, Telegram, and 50+ other services across 100+ countries.',
+    details: ['Instant delivery — most codes arrive within 30 seconds', 'Global coverage — numbers from 100+ countries', 'Low cost — starting at just $1.60 per verification'],
+  },
+  voice: {
+    eyebrow: 'Audio fallback', title: 'Voice Verification', label: 'Voice',
+    description: 'Receive verification codes through automated voice calls. A robot caller reads your code aloud — perfect when SMS is not available.',
+    details: ['Clear automated voice delivery', 'Works when SMS reception is not an option', 'The same fast ordering flow as SMS verification'],
+  },
+  rental: {
+    eyebrow: 'Longer-term access', title: 'Rental Numbers', label: 'Rental',
+    description: 'Need a phone number for longer? Rent one for a week, month, 3 months, or 6 months and receive unlimited verification codes during your rental period.',
+    details: ['Dedicated number for the duration you choose', 'Unlimited SMS reception while your rental is active', 'Longer plans include meaningful discounts'],
+  },
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
-  const [pricingTab, setPricingTab] = useState<'once' | 'rental'>('once');
+  const [mode, setMode] = useState<VerificationMode>('sms');
+  const selectedMode = modes[mode];
 
   return (
-    <div className="smooth-bg">
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="hero__bg" />
-        <div className="hero__blob-tr" />
-        <div className="hero__blob-bl" />
-
-        <div className="page-container">
-          <div className="hero__content">
-            <div className="hero__badge">
-              <LockIcon className="icon-sm text-indigo" />
-              <span>100% Private & Anonymous</span>
+    <div className="v-home">
+      <section className="v-hero">
+        <div className="v-hero__grain" aria-hidden="true" />
+        <div className="page-container v-hero__grid">
+          <div className="v-hero__copy">
+            <p className="v-kicker"><LockIcon className="icon-sm" /> 100% Private &amp; Anonymous</p>
+            <h1>OTP Verification<br /><em>Made Simple.</em></h1>
+            <p className="v-hero__lede">Get instant SMS and voice verification codes for Google, WhatsApp, Telegram, and dozens of other services. Rent phone numbers by the week, month, or longer.</p>
+            <div className="v-hero__actions"><Link href="/register" className="v-button v-button--signal">Get Started Free <span aria-hidden="true">↗</span></Link><a href="#how-it-works" className="v-button v-button--quiet">How It Works</a></div>
+            <div className="v-proof" aria-label="Verifio at a glance"><span><CheckCircleIcon className="icon-sm" /> 50+ Services</span><span><CheckCircleIcon className="icon-sm" /> 100+ Countries</span><span><CheckCircleIcon className="icon-sm" /> 99.9% Uptime</span><span><CheckCircleIcon className="icon-sm" /> 24/7 Support</span></div>
+          </div>
+          <div className="v-console" aria-label="Example verification workspace">
+            <div className="v-console__topline"><span>VERIFIO / LIVE WORKSPACE</span><span className="v-live"><i /> Ready</span></div>
+            <div className="v-console__body">
+              <div className="v-console__prompt">01 / SELECT A PATH</div>
+              <div className="v-console__choices"><div><span>Service</span><strong>Telegram</strong></div><div><span>Country</span><strong>United Kingdom</strong></div></div>
+              <div className="v-console__line" />
+              <div className="v-console__prompt">02 / NUMBER ISSUED</div>
+              <div className="v-console__number"><span>+44</span> 7700 900 482 <button type="button" aria-label="Example copy control">⧉</button></div>
+              <div className="v-console__status"><span className="v-live"><i /> Listening for code</span><strong>04:57</strong></div>
+              <div className="v-console__code"><span>Incoming code</span><b>— — — — — —</b></div>
             </div>
-
-            <h1 className="hero__title">
-              OTP Verification
-              <span className="hero__title-accent">Made Simple</span>
-            </h1>
-
-            <p className="hero__desc">
-              Get instant SMS and voice verification codes for Google, WhatsApp, Telegram,
-              and dozens of other services. Rent phone numbers by the week, month, or longer.
-            </p>
-
-            <div className="hero__actions">
-              <Link href="/register" className="btn-primary">Get Started Free</Link>
-              <Link href="#how-it-works" className="btn-secondary">How It Works</Link>
-            </div>
-
-            {/* Stats */}
-            <div className="hero-stats">
-              {[
-                { value: '50+', label: 'Services' },
-                { value: '100+', label: 'Countries' },
-                { value: '99.9%', label: 'Uptime' },
-                { value: '24/7', label: 'Support' },
-              ].map((stat) => (
-                <div key={stat.label} className="hero-stat">
-                  <div className="hero-stat__value">{stat.value}</div>
-                  <div className="hero-stat__label">{stat.label}</div>
-                </div>
-              ))}
-            </div>
+            <div className="v-console__foot"><span>Account balance</span><strong>$24.00</strong><span className="v-console__marker">●</span></div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="section section-alt">
-        <div className="page-container">
-          <div className="section-header">
-            <h2 className="section-header-title">Everything You Need</h2>
-            <p className="section-header-subtitle">Three powerful verification methods. Choose what works best for you.</p>
-          </div>
+      <section className="v-marquee" aria-label="Service overview"><div className="page-container"><span>SMS</span><i>✦</i><span>VOICE</span><i>✦</i><span>RENTALS</span><i>✦</i><span>ONE ACCOUNT</span><i>✦</i><span>ONE CLEAR HISTORY</span></div></section>
 
-          {/* Verification type tabs */}
-          <div className="tabs">
-            <div className="tabs__inner">
-              {[
-                { key: 'sms' as const, label: 'SMS' },
-                { key: 'voice' as const, label: 'Voice' },
-                { key: 'rental' as const, label: 'Rental' },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`tab ${activeTab === tab.key ? 'tab--active' : ''}`}
-                >
-                  {tabIcons[tab.key]} {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Feature details */}
-          <div className="feature-panel">
-            {activeTab === 'sms' && (
-              <div className="feature-card">
-                <div className="feature-card__icon">{tabIcons.sms}</div>
-                <h3 className="feature-card__title">SMS Verification</h3>
-                <p className="feature-card__desc">
-                  Get a disposable phone number and receive verification codes via SMS. Works with Google, WhatsApp, Telegram, and 50+ other services across 100+ countries. Most codes arrive within 10-60 seconds.
-                </p>
-                <div className="feature-grid-3">
-                  {[
-                    { title: 'Instant Delivery', desc: 'Most codes arrive within 30 seconds' },
-                    { title: 'Global Coverage', desc: 'Numbers from 100+ countries worldwide' },
-                    { title: 'Low Cost', desc: 'Starting at just $1.60 per verification' },
-                  ].map((item) => (
-                    <div key={item.title} className="feature-item">
-                      <div className="feature-item__title">{item.title}</div>
-                      <div className="feature-item__desc">{item.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'voice' && (
-              <div className="feature-card">
-                <div className="feature-card__icon">{tabIcons.voice}</div>
-                <h3 className="feature-card__title">Voice Verification</h3>
-                <p className="feature-card__desc">
-                  Receive verification codes through automated voice calls. A robot caller reads your code aloud — perfect when SMS isn't available. Supports all major services with clear audio delivery.
-                </p>
-                <div className="feature-grid-3">
-                  {[
-                    { title: 'Clear Audio', desc: 'Crystal clear automated voice delivery' },
-                    { title: 'Works Anywhere', desc: 'No SMS reception? Voice calls always work' },
-                    { title: 'Quick Setup', desc: 'Same fast ordering as SMS verification' },
-                  ].map((item) => (
-                    <div key={item.title} className="feature-item">
-                      <div className="feature-item__title">{item.title}</div>
-                      <div className="feature-item__desc">{item.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'rental' && (
-              <div className="feature-card">
-                <div className="feature-card__icon">{tabIcons.rental}</div>
-                <h3 className="feature-card__title">Rental Numbers</h3>
-                <p className="feature-card__desc">
-                  Need a phone number for longer? Rent one for a week, month, 3 months, or 6 months. Receive unlimited verification codes during your rental period. Longer plans include significant discounts.
-                </p>
-                <div className="feature-grid-4">
-                  {Object.entries(PLAN_DURATIONS).map(([key, plan]) => (
-                    <div key={key} className="feature-plan-item">
-                      <div className="feature-plan-item__label">{plan.label}</div>
-                      <div className="feature-plan-item__days">{plan.days} days</div>
-                      {plan.discount > 0 && (
-                        <div className="feature-plan-item__discount">-{plan.discount}%</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+      <section className="v-section v-section--modes" id="features"><div className="page-container">
+        <div className="v-section__intro"><p className="v-kicker v-kicker--dark"><span /> Choose the right channel</p><h2>Everything You Need<br />to get verified.</h2><p>Three powerful verification methods. Choose what works best for you, then follow every step from your dashboard.</p></div>
+        <div className="v-mode-layout">
+          <div className="v-mode-tabs" role="tablist" aria-label="Verification methods">{(Object.keys(modes) as VerificationMode[]).map((key, index) => <button key={key} type="button" role="tab" aria-selected={mode === key} onClick={() => setMode(key)} className={mode === key ? 'is-active' : ''}><span>0{index + 1}</span>{modes[key].label}<b>↗</b></button>)}</div>
+          <article className="v-mode-card" role="tabpanel"><p>{selectedMode.eyebrow}</p><h3>{selectedMode.title}</h3><div className="v-mode-card__content"><p>{selectedMode.description}</p><ul>{selectedMode.details.map((detail) => <li key={detail}><CheckCircleIcon className="icon-sm" /> {detail}</li>)}</ul></div><Link href="/register" className="v-text-link">Start with {selectedMode.label.toLowerCase()} <span>→</span></Link></article>
         </div>
-      </section>
+      </div></section>
 
-      {/* Supported Services */}
-      <section id="sms-verification" className="section">
-        <div className="page-container">
-          <div className="section-header">
-            <h2 className="section-header-title">Supported Services</h2>
-            <p className="section-header-subtitle">50+ platforms supported across all verification methods.</p>
-          </div>
-          <div className="services-grid">
-            {SUPPORTED_SERVICES.map((service) => (
-              <div key={service.id} className="service-item">
-                <span className="service-item__name">{service.name}</span>
-              </div>
-            ))}
-            <div className="services-more">+ many more</div>
-          </div>
-          <p className="affiliation-disclaimer">
-            Verifio is an independent verification platform. We are not affiliated with, endorsed by, or sponsored by any of the listed services. All trademarks and service marks belong to their respective owners.
-          </p>
+      <section className="v-section v-section--coverage" id="sms-verification"><div className="page-container">
+        <div className="v-coverage-head"><div><p className="v-kicker v-kicker--dark"><span /> Global coverage</p><h2>Supported<br />Services.</h2></div><p>50+ platforms are supported across all verification methods, including the services people use every day.</p></div>
+        <div className="v-directory" aria-label="Supported services">{SUPPORTED_SERVICES.map((service) => <span key={service.id}>{service.name}</span>)}<span>+ many more</span></div>
+        <p className="v-disclaimer">Verifio is an independent verification platform. We are not affiliated with, endorsed by, or sponsored by any listed service. All trademarks belong to their respective owners.</p>
+        <div className="v-country-strip"><div><p className="v-kicker v-kicker--dark"><span /> Available Countries</p><h3>Phone numbers from over 100 countries worldwide.</h3></div><div className="v-country-list">{SUPPORTED_COUNTRIES.map((country) => <span key={country.code}>{country.name}</span>)}<span>🌍 + many more</span></div></div>
+      </div></section>
 
-          {/* Countries */}
-          <div className="countries-subsection">
-            <div className="countries-subsection__header">
-              <h3 className="countries-subsection__title">Available Countries</h3>
-              <p className="countries-subsection__desc">Phone numbers from over 100 countries worldwide</p>
-            </div>
-            <div className="countries-grid">
-              {SUPPORTED_COUNTRIES.map((country) => (
-                <div key={country.code} className="country-item">
-                  <span className="country-item__name">{country.name}</span>
-                </div>
-              ))}
-              <div className="countries-more">
-                <span className="countries-more__globe">🌍</span> + many more
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="v-section v-section--workflow" id="how-it-works"><div className="page-container">
+        <div className="v-coverage-head"><div><p className="v-kicker v-kicker--dark"><span /> A clear workflow</p><h2>How It<br />Works.</h2></div><p>Get verified in three simple steps. Your dashboard keeps the number, countdown, status, cost, and received code together.</p></div>
+        <div className="v-steps">{[
+          ['01', 'Select Service & Country', 'Choose the platform you need to verify on and pick a country for your phone number.'],
+          ['02', 'Get Your Number', 'We instantly provide a phone number. Use it to request your verification code on the target platform.'],
+          ['03', 'Receive Your Code', 'We deliver the OTP code to your dashboard. Copy it and complete your verification.'],
+        ].map(([number, title, copy]) => <article key={number}><span>{number}</span><TargetIcon className="icon-lg" /><h3>{title}</h3><p>{copy}</p></article>)}</div>
+      </div></section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="section section-alt">
-        <div className="page-container">
-          <div className="section-header">
-            <h2 className="section-header-title">How It Works</h2>
-            <p className="section-subtitle">Get verified in three simple steps.</p>
-          </div>
-          <div className="steps-grid">
-            {[
-              {
-                step: '1',
-                title: 'Select Service & Country',
-                desc: 'Choose the platform you need to verify on and pick a country for your phone number.',
-                Icon: TargetIcon,
-              },
-              {
-                step: '2',
-                title: 'Get Your Number',
-                desc: 'We instantly provide a phone number. Use it to request your verification code on the target platform.',
-                Icon: ShieldIcon,
-              },
-              {
-                step: '3',
-                title: 'Receive Your Code',
-                desc: 'We deliver the OTP code to your dashboard. Copy it and complete your verification.',
-                Icon: CheckCircleIcon,
-              },
-            ].map((item) => (
-              <div key={item.step} className="step-card">
-                <div className="step-card__icon">
-                  <item.Icon className="icon-xl text-indigo" />
-                </div>
-                <div className="step-card__number">Step {item.step}</div>
-                <h3 className="step-card__title">{item.title}</h3>
-                <p className="step-card__desc">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section className="v-section v-section--plans" id="pricing"><div className="page-container v-plans"><div><p className="v-kicker"><span /> Verification options</p><h2>Pay for the<br /><em>path you choose.</em></h2></div><div className="v-plan-copy"><p>Choose between one-time verification and long-term rental numbers. One-time numbers are discarded after use, with verification starting at $1.60. Rentals are dedicated to you for 7 days, 1 month, 3 months, or 6 months — with longer plans discounted.</p><p className="v-plan-copy__note">Pay only for what you use — no commitment. Debit/credit cards and cryptocurrency are accepted.</p><Link className="v-text-link v-text-link--light" href="/register">Get Started <span>→</span></Link></div></div></section>
 
-      {/* Pricing / Verification Options */}
-      <section id="pricing" className="section">
-        <div className="page-container">
-          <div className="section-header">
-            <h2 className="section-header-title">Verification Options</h2>
-            <p className="section-header-subtitle">Choose between one-time verification or long-term rental numbers.</p>
-          </div>
+      <section className="v-section v-section--faq" id="faq"><div className="page-container v-faq-grid"><div><p className="v-kicker v-kicker--dark"><span /> Before you start</p><h2>The useful<br />questions, answered.</h2></div><div className="v-faq-list">{[
+        ['How long does it take to receive a verification code?', 'Most SMS codes arrive within 10–60 seconds. Voice codes take 30–90 seconds. Rental numbers receive codes instantly once the rental is active.'],
+        ['Which services are supported?', 'We support over 50 platforms including Google, WhatsApp, Telegram, Facebook, Instagram, X, Discord, Microsoft, Apple, Amazon, Tinder, Snapchat, and many more.'],
+        ['Can I cancel a rental number early?', 'You can cancel a rental before a number is issued to you. After a number is issued, the rental cannot be cancelled.'],
+        ['What payment methods do you accept?', 'We accept credit/debit cards and cryptocurrency.'],
+        ['Are the phone numbers reusable?', 'SMS verification numbers are one-time use, with a resend option available up to two times. Rental numbers are exclusively yours for the rental period and can receive multiple codes.'],
+      ].map(([question, answer]) => <details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div></div></section>
 
-          {/* Pricing type tabs */}
-          <div className="tabs">
-            <div className="tabs__inner">
-              {[
-                { key: 'once' as const, label: 'One-Time Verification' },
-                { key: 'rental' as const, label: 'Rental Plans' },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setPricingTab(tab.key)}
-                  className={`tab ${pricingTab === tab.key ? 'tab--active' : ''}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* One-Time Verification Card */}
-          {pricingTab === 'once' && (
-            <div className="feature-card animate-fade-in">
-              <div className="feature-card__icon">
-                <TargetIcon className="icon-xl text-indigo" />
-              </div>
-              <h3 className="feature-card__title">One-Time Verification</h3>
-              <p className="feature-card__desc">
-                Get a temporary phone number for a single verification use. Once you receive your code, the number is discarded — perfect for quick account verifications.
-              </p>
-              <ul className="pricing-card__features">
-                <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Numbers are used once and discarded after each use
-                </li>
-                <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Verification cost starts at just $1.60
-                </li>
-                <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Most codes arrive within 30 seconds
-                </li>
-                <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Pay only for what you use — no commitment
-                </li>
-                <li className="pricing-card__feature">
-                  <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Available via SMS or voice call
-                </li>
-              </ul>
-
-              {/* Payment Methods */}
-              <div className="payment-methods">
-                <h4 className="payment-methods__title">We Accept</h4>
-                <p className="payment-methods__desc">
-                  <strong>Debit/Credit Cards</strong> and <strong>Cryptocurrency</strong>: Bitcoin (BTC), Ethereum (Arbitrum, Optimism, Base), USDT & USDC (TRC-20, Solana, Polygon, BSC, Arbitrum), Litecoin (LTC), Monero (XMR), Dogecoin (DOGE), Tron (TRX)
-                </p>
-              </div>
-
-              <div className="hero__actions" style={{ marginTop: '1.5rem' }}>
-                <Link href="/register" className="btn-primary">Get Started</Link>
-              </div>
-            </div>
-          )}
-
-          {/* Rental Plans */}
-          {pricingTab === 'rental' && (
-            <div className="pricing-grid animate-fade-in">
-              {Object.entries(PLAN_DURATIONS).map(([key, plan]) => {
-                const isPopular = key === 'monthly';
-                const basePrices: Record<string, number> = { weekly: 4.99, monthly: 15.99, quarterly: 39.99, biannual: 69.99 };
-                const basePrice = basePrices[key] || 0;
-                const discountedPrice = (basePrice * (1 - plan.discount / 100)).toFixed(2);
-
-                return (
-                  <div key={key} className={`pricing-card ${isPopular ? 'pricing-card--popular' : ''}`}>
-                    {isPopular && (
-                      <div className="pricing-card__badge">Most Popular</div>
-                    )}
-                    <div className="pricing-card__inner">
-                      <h3 className="pricing-card__title">{plan.label}</h3>
-                      <p className="pricing-card__subtitle">{plan.days} days</p>
-                      <div className="pricing-card__price">
-                        <span className="pricing-card__price-value">${discountedPrice}</span>
-                        {plan.discount > 0 && (
-                          <span className="pricing-card__price-original">${basePrice}</span>
-                        )}
-                      </div>
-                      {plan.discount > 0 && (
-                        <div className="pricing-card__save-badge">Save {plan.discount}%</div>
-                      )}
-                      <ul className="pricing-card__features">
-                        <li className="pricing-card__feature">
-                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Dedicated phone number
-                        </li>
-                        <li className="pricing-card__feature">
-                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> Unlimited SMS reception
-                        </li>
-                        <li className="pricing-card__feature">
-                          <CheckCircleIcon className="icon-md pricing-card__feature-icon" /> 24/7 availability
-                        </li>
-                      </ul>
-                      <Link
-                        href="/register"
-                        className={`pricing-card__cta ${isPopular ? 'pricing-card__cta--primary' : 'pricing-card__cta--secondary'}`}
-                      >
-                        Get Started
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="section section-alt">
-        <div className="page-container faq">
-          <div className="section-header">
-            <h2 className="section-header-title">Frequently Asked Questions</h2>
-            <p className="section-subtitle">Everything you need to know about Verifio.</p>
-          </div>
-          <div className="faq__list">
-            {[
-              { q: 'How long does it take to receive a verification code?', a: 'Most SMS codes arrive within 10-60 seconds. Voice codes take 30-90 seconds. Rental numbers receive codes instantly once the rental is active.' },
-              { q: 'Which services are supported?', a: 'We support over 50 platforms including Google, WhatsApp, Telegram, Facebook, Instagram, X, Discord, Microsoft, Apple, Amazon, Tinder, Snapchat, and many more.' },
-              { q: 'Can I cancel a rental number early?', a: 'Yes, you can cancel a rental before a number is issued to you. However, after a number is issued to you, you cannot cancel the rental.' },
-              { q: 'What payment methods do you accept?', a: 'We accept credit/debit cards and cryptocurrency.' },
-              { q: 'Are the phone numbers reusable?', a: 'SMS verification numbers are one-time use but can be reused for up to 2 times using the resend option. Rental numbers are exclusively yours for the duration of the rental period and can receive multiple codes.' },
-            ].map((faq, i) => (
-              <details key={i} className="faq__item">
-                <summary className="faq__summary">
-                  {faq.q}
-                  <svg className="faq__chevron icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="faq__answer">{faq.a}</div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="cta-section">
-        <div className="cta-section__inner">
-          <div className="cta-card">
-            <h2 className="cta-card__title">Ready to Get Verified?</h2>
-            <p className="cta-card__desc">
-              Create your account now and start verifying with phone numbers from over 100 countries.
-            </p>
-            <Link href="/register" className="cta-card__btn">Create Free Account</Link>
-          </div>
-        </div>
-      </section>
+      <section className="v-final"><div className="page-container"><ShieldIcon className="icon-xl" /><p>Ready to Get Verified?</p><h2>Create your account<br />and start today.</h2><Link href="/register" className="v-button v-button--signal">Create Free Account <span aria-hidden="true">↗</span></Link></div></section>
     </div>
   );
 }

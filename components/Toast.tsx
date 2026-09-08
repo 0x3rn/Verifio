@@ -11,8 +11,6 @@ interface ToastItem {
 
 // Simple global-like state managed through React context pattern
 let toastIdCounter = 0;
-let globalAddToast: ((type: 'error' | 'success', title: string, message: string) => void) | null = null;
-let globalRemoveToast: ((id: string) => void) | null = null;
 
 export function useToast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);

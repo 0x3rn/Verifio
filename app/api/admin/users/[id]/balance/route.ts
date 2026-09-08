@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { adjustUserBalance } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
@@ -21,17 +21,10 @@ export async function POST(
 
     const { id: targetUserId } = await params;
 
-    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
-    if (!targetUser) {
-      return NextResponse.json({ error: 'User not found.' }, { status: 404 });
-    }
+    const newBalance = await adjustUserBalance(targetUserId, parsedAmount);
+    if (newBalance === undefined) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-    const updatedUser = await prisma.user.update({
-      where: { id: targetUserId },
-      data: { balance: { increment: parsedAmount } },
-    });
-
-    return NextResponse.json({ success: true, newBalance: updatedUser.balance });
+    return NextResponse.json({ success: true, newBalance });
   } catch (error) {
     console.error('Admin update balance error:', error);
     return NextResponse.json({ error: 'Failed to update balance.' }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasIdentified, setHasIdentified] = useState(false);
+  const hasIdentified = useRef(false);
   const [activeTab, setActiveTab] = useState<'sms' | 'voice' | 'rental'>('sms');
   const [selectedService, setSelectedService] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -43,13 +43,10 @@ export default function DashboardPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [working, setWorking] = useState(false);
   
-  const [serviceSearch, setServiceSearch] = useState('');
-  const [countrySearch, setCountrySearch] = useState('');
-  
   const [pricing, setPricing] = useState<{ basePrice: number; displayPrice: number; successRate?: number } | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
 
@@ -101,17 +98,18 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { 
-    if (user && !hasIdentified) { 
+    if (user && !hasIdentified.current) {
       identifyUser(user.id, { username: user.username, email: user.email || undefined }); 
-      setHasIdentified(true); 
+      hasIdentified.current = true;
     } 
-  }, [user, hasIdentified]);
+  }, [user]);
 
   useEffect(() => {
-    if (!selectedService || !selectedCountry || activeTab === 'rental') { setPricing(null); return; }
+    if (!selectedService || !selectedCountry || activeTab === 'rental') return;
     let cancelled = false;
-    setPricingLoading(true); setPricing(null);
     const fetchPricing = async () => {
+      setPricingLoading(true);
+      setPricing(null);
       try {
         const res = await fetch(`/api/pricing?country=${selectedCountry}&service=${selectedService}`);
         if (res.ok && !cancelled) { const data = await res.json(); setPricing(data); }
@@ -159,21 +157,26 @@ export default function DashboardPage() {
 
     setWorking(true); setStatusMessage('Ordering number...'); 
     try {
-      const endpoint = activeTab === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
+      const endpoint = activeTab === 'rental' ? '/api/rentals' : activeTab === 'voice' ? '/api/verify/voice' : '/api/verify/sms';
       const body: Record<string, string> = { country: selectedCountry, service: selectedService };
       if (activeTab === 'rental') body.plan = selectedPlan;
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) { setStatusMessage(data.error || 'Failed to order.'); setWorking(false); return; }
       
+      if (activeTab === 'rental') {
+        setStatusMessage('Rental activated. Opening your rentals…');
+        router.push('/dashboard/rentals');
+        return;
+      }
       setActiveOrders(prev => [data.order, ...prev]);
-      setStatusMessage(`Number acquired.`);
-      trackEvent('Verification Ordered', { type: activeTab, service: selectedService, country: selectedCountry, cost: data.order.cost, plan: activeTab === 'rental' ? selectedPlan : undefined });
+      setStatusMessage('Number acquired.');
+      trackEvent('Verification Ordered', { type: activeTab, service: selectedService, country: selectedCountry, cost: data.order.cost });
       
       setUser(prev => prev ? { ...prev, balance: prev.balance - data.order.cost } : prev);
     } catch { setStatusMessage('An unexpected error occurred.'); }
     finally { setWorking(false); }
-  }, [selectedService, selectedCountry, selectedPlan, activeTab, activeOrders.length]);
+  }, [selectedService, selectedCountry, selectedPlan, activeTab, activeOrders.length, router]);
 
   const handleCheckCode = useCallback(async (orderId: string) => {
     const order = activeOrders.find(o => o.id === orderId);
@@ -219,24 +222,24 @@ export default function DashboardPage() {
   };
 
   const filteredServices = useMemo(() => {
-    return services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase())).sort((a, b) => {
+    return [...services].sort((a, b) => {
       const aPop = POPULAR_SERVICE_NAMES.includes(a.name.toLowerCase());
       const bPop = POPULAR_SERVICE_NAMES.includes(b.name.toLowerCase());
       if (aPop && !bPop) return -1;
       if (!aPop && bPop) return 1;
       return 0;
     });
-  }, [services, serviceSearch]);
+  }, [services]);
 
   const filteredCountries = useMemo(() => {
-    return countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).sort((a, b) => {
+    return [...countries].sort((a, b) => {
       const aPop = POPULAR_COUNTRY_NAMES.includes(a.name.toLowerCase());
       const bPop = POPULAR_COUNTRY_NAMES.includes(b.name.toLowerCase());
       if (aPop && !bPop) return -1;
       if (!aPop && bPop) return 1;
       return 0;
     });
-  }, [countries, countrySearch]);
+  }, [countries]);
 
   const getServiceName = (id: string) => services.find(s => s.id === id)?.name || id;
   const getCountryName = (id: string) => countries.find(c => c.id === id)?.name || id;
@@ -258,11 +261,9 @@ export default function DashboardPage() {
           <p className="dash-header__subtitle">Manage your verifications.</p>
         </div>
         <div className="dash-header__balance">
-          <WalletIcon className="icon-sm text-gray-400" />
+          <WalletIcon className="icon-sm dash-header__balance-icon" />
           <span>${user.balance.toFixed(2)}</span>
-          <Link href="/dashboard/billing">
-            <button className="dash-topup-btn">Top Up</button>
-          </Link>
+          <Link href="/dashboard/billing" className="dash-topup-btn">Top Up</Link>
         </div>
       </header>
 
@@ -308,7 +309,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            {activeTab === 'rental' && (
+              {activeTab === 'rental' && (
               <div className="dash-selector mt-2">
                 <label className="dash-label">Rental Duration</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -330,9 +331,11 @@ export default function DashboardPage() {
             <div className="dash-submit-area">
               <div className="dash-price">
                 <span className="dash-price__label">Total Cost</span>
-                {pricingLoading ? (
-                  <span className="text-sm font-medium text-gray-500 mt-1">Calculating...</span>
-                ) : pricing && activeTab !== 'rental' ? (
+                {activeTab === 'rental' ? (
+                  <span className="dash-price__value dash-price__value--estimate">Quoted after selection</span>
+                ) : pricingLoading ? (
+                  <span className="dash-price__loading">Calculating...</span>
+                ) : pricing ? (
                   <>
                     <span className="dash-price__value">${pricing.displayPrice.toFixed(2)}</span>
                     {pricing.successRate && <span className="dash-price__success">{pricing.successRate}% success rate</span>}
@@ -350,16 +353,16 @@ export default function DashboardPage() {
                 {working ? 'Processing' : `Get Number`}
               </button>
             </div>
-            {activeOrders.length >= 5 && <p className="text-red-500 text-xs font-medium text-right mt-[-10px]">Limit of 5 active orders reached.</p>}
+            {activeOrders.length >= 5 && <p className="dash-limit-notice">Limit of 5 active orders reached.</p>}
             {statusMessage && <div className={`dash-status ${statusModifier}`}>{statusMessage}</div>}
           </div>
         </div>
 
         {/* Right Panel: Active Verifications */}
         <div className="dash-panel dash-panel--transparent">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Active Verifications</h2>
-            <Link href="/dashboard/orders" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">View History &rarr;</Link>
+          <div className="dash-panel-heading">
+            <h2>Active Verifications</h2>
+            <Link href="/dashboard/orders">View history &rarr;</Link>
           </div>
           
           <div className="active-orders-column">
@@ -421,9 +424,9 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="active-order-empty">
-                <ClipboardIcon className="w-10 h-10 active-order-empty__icon" />
-                <h3 className="font-medium text-gray-900 dark:text-white mb-1">No active verifications</h3>
-                <p className="text-sm">Create a new verification on the left to get started.</p>
+                <ClipboardIcon className="active-order-empty__icon" />
+                <h3>No active verifications</h3>
+                <p>Create a new verification on the left to get started.</p>
               </div>
             )}
           </div>

@@ -7,19 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "db:migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate-neon.ts",
+    "db:check": "node --env-file=.env.local --experimental-strip-types scripts/check-neon.ts",
+    "auth:check": "node --env-file=.env.local --experimental-strip-types scripts/check-clerk.ts",
+    "security:check": "node --env-file=.env.local --experimental-strip-types scripts/check-security.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@clerk/nextjs": "^7.9.1",
     "@types/nodemailer": "^8.0.0",
-    "@types/pg": "^8.20.0",
-    "jose": "^6.2.3",
     "libphonenumber-js": "^1.13.6",
-    "next": "16.2.6",
+    "next": "^16.3.4",
     "nextjs-toploader": "^3.9.17",
-    "nodemailer": "^8.0.9",
-    "pg": "^8.21.0",
+    "nodemailer": "^10.0.1",
+    "postgres": "^3.4.9",
     "posthog-js": "^1.376.5",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -30,7 +30,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
-    "prisma": "^7.8.0",
     "typescript": "^5"
   }
 }

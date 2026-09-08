@@ -2,16 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode, applyMarkup, getPrice, formatPhoneNumber, getCountries, getServices } from '@/lib/smspool';
 import { orderTextVerifiedCode, checkTextVerifiedCode } from '@/lib/textverified';
-import { prisma, getOrder, updateOrder, generateOrderId } from '@/lib/db';
-import type { VerificationOrder } from '@/lib/types';
+import { acquireRequestLock, completeOrder, consumeRateLimit, countActiveOrders, createOrderWithDebit, generateOrderId, getOrder, refundOrder, releaseRequestLock, updateOrder } from '@/lib/db';
+import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
 
 // Order new SMS verification
 export async function POST(request: NextRequest) {
+  let purchaseLockKey: string | null = null;
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
+    if (!isSameOriginRequest(request)) {
+      return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
+    }
+    const allowed = await consumeRateLimit({
+      scope: 'sms-order', key: requestRateLimitKey(request, user.id), limit: 10, windowSeconds: 10 * 60,
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many verification requests. Please try again shortly.' }, { status: 429 });
+    }
+    const locked = await acquireRequestLock({ scope: 'paid-purchase', key: user.id });
+    if (!locked) {
+      return NextResponse.json({ error: 'A purchase is already being processed for this account. Please wait a moment.' }, { status: 409 });
+    }
+    purchaseLockKey = user.id;
 
     const body = await request.json();
     const { country, service } = body;
@@ -24,9 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check active order limit
-    const activeOrdersCount = await prisma.order.count({
-      where: { userId: user.id, status: 'waiting_for_code' },
-    });
+    const activeOrdersCount = await countActiveOrders(user.id);
     if (activeOrdersCount >= 5) {
       return NextResponse.json(
         { error: 'You have reached the limit of 5 active orders. Please complete or cancel existing orders.' },
@@ -81,36 +94,7 @@ export async function POST(request: NextRequest) {
     const formattedPhone = formatPhoneNumber(phoneStr, isoCode);
 
     // 4. Atomic: verify balance + deduct + save order (all inside transaction)
-    await prisma.$transaction(async (tx) => {
-      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
-      if (!dbUser || dbUser.balance < cost) {
-        throw new Error('Insufficient balance. Please add funds to your wallet.');
-      }
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: { balance: { decrement: cost } },
-      });
-
-      await tx.order.create({
-        data: {
-          id: orderId,
-          userId: user.id,
-          service,
-          country,
-          phoneNumber: phoneStr,
-          code: null,
-          status: 'waiting_for_code',
-          type: 'sms',
-          cost,
-          smspoolOrderId: String(upstreamOrder.order_id),
-          provider,
-          createdAt: new Date(now),
-          completedAt: null,
-          expiresAt: new Date(expiresAt),
-        },
-      });
-    });
+    await createOrderWithDebit({ id: orderId, userId: user.id, service, country, phoneNumber: phoneStr, code: '', status: 'waiting_for_code', type: 'sms', cost, smspoolOrderId: String(upstreamOrder.order_id), provider, createdAt: now, completedAt: null, expiresAt });
 
     return NextResponse.json({
       success: true,
@@ -127,11 +111,9 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     let message = error instanceof Error ? error.message : 'Failed to order SMS verification.';
-    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
-      console.error('DEV_DB_001:', error);
-      message = 'System error: DEV_DB_001';
-    }
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    if (purchaseLockKey) await releaseRequestLock({ scope: 'paid-purchase', key: purchaseLockKey });
   }
 }
 
@@ -162,16 +144,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Order has already been completed or refunded.' }, { status: 400 });
       }
 
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { balance: { increment: order.cost } },
-        });
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: 'refunded' },
-        });
-      });
+      const refunded = await refundOrder(orderId, user.id);
+      if (!refunded) return NextResponse.json({ error: 'Order status changed before refund.' }, { status: 409 });
 
       return NextResponse.json({ success: true, status: 'refunded', message: 'Balance refunded.' });
     }
@@ -185,11 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (codeData.success === 1 && codeData.code) {
-      await updateOrder(orderId, {
-        code: codeData.code,
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-      });
+      await completeOrder(orderId, codeData.code);
 
       return NextResponse.json({
         success: true,
@@ -201,16 +171,7 @@ export async function GET(request: NextRequest) {
 
     // Auto-refund if expired
     if (new Date(order.expiresAt) < new Date()) {
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { balance: { increment: order.cost } },
-        });
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: 'refunded' },
-        });
-      });
+      await refundOrder(orderId, user.id);
 
       return NextResponse.json({
         success: false,
@@ -226,10 +187,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     let message = error instanceof Error ? error.message : 'Failed to retrieve code.';
-    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
-      console.error('DEV_DB_001:', error);
-      message = 'System error: DEV_DB_001';
-    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

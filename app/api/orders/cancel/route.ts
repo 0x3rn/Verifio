@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma, getOrder } from '@/lib/db';
+import { getOrder, refundOrder } from '@/lib/db';
 import { cancelSMSOrder } from '@/lib/smspool';
 import { cancelTextVerifiedOrder } from '@/lib/textverified';
+import { isSameOriginRequest } from '@/lib/request-security';
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+    }
+    if (!isSameOriginRequest(request)) {
+      return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -45,28 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Failed to cancel upstream order: ${msg}` }, { status: 400 });
     }
 
-    // Atomic transaction: Mark as cancelled and refund user
-    await prisma.$transaction(async (tx) => {
-      // Re-fetch to ensure it hasn't changed status concurrently
-      const currentOrder = await tx.order.findUnique({ where: { id: order.id } });
-      if (currentOrder?.status !== 'waiting_for_code') {
-        throw new Error('Order status changed during cancellation.');
-      }
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'cancelled',
-          completedAt: new Date(),
-        },
-      });
-
-      // Refund the cost
-      await tx.user.update({
-        where: { id: user.id },
-        data: { balance: { increment: order.cost } },
-      });
-    });
+    const cancelled = await refundOrder(order.id, user.id, 'cancelled');
+    if (!cancelled) {
+      return NextResponse.json({ error: 'Order status changed during cancellation.' }, { status: 409 });
+    }
 
     return NextResponse.json({ success: true, message: 'Order cancelled and refunded.' });
   } catch (error) {

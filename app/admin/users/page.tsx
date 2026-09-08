@@ -20,11 +20,7 @@ export default function AdminUsersPage() {
   const [fundAmount, setFundAmount] = useState('');
   const [funding, setFunding] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     try {
       const res = await fetch('/api/admin/users');
       if (res.ok) {
@@ -33,12 +29,16 @@ export default function AdminUsersPage() {
       } else {
         setError('Failed to load users');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred');
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    void fetchUsers();
+  }, []);
 
   const handleAddFunds = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
       } else {
         alert('Failed to update balance');
       }
-    } catch (err) {
+    } catch {
       alert('An error occurred while updating balance');
     } finally {
       setFunding(false);

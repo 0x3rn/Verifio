@@ -14,7 +14,7 @@ export default function OrdersPage() {
   const [countriesMap, setCountriesMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
@@ -57,8 +57,8 @@ export default function OrdersPage() {
           const sMap: Record<string, string> = {};
           const cMap: Record<string, string> = {};
           
-          services?.forEach((s: any) => sMap[String(s.ID)] = s.name);
-          countries?.forEach((c: any) => cMap[String(c.ID)] = c.name);
+          services?.forEach((s: { ID: number | string; name: string }) => { sMap[String(s.ID)] = s.name; });
+          countries?.forEach((c: { ID: number | string; name: string }) => { cMap[String(c.ID)] = c.name; });
           
           setServicesMap(sMap);
           setCountriesMap(cMap);
@@ -208,7 +208,7 @@ export default function OrdersPage() {
                     <div className="card-detail__label">Timer</div>
                     <div className="card-detail__value">
                       {isWaiting ? (
-                        <span className="text-red-500 font-mono font-medium">{formatTime(timeLeft)}</span>
+                        <span className="order-countdown">{formatTime(timeLeft)}</span>
                       ) : (
                         '—'
                       )}

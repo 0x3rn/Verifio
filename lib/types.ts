@@ -9,10 +9,6 @@ export interface User {
   updatedAt: string;
 }
 
-export interface StoredUser extends User {
-  password?: string;
-}
-
 export interface VerificationOrder {
   id: string;
   userId: string;

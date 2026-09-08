@@ -47,7 +47,7 @@
 
 ## Features
 
-- 🔐 **JWT Authentication** — Secure login/registration with HTTP-only cookies
+- 🔐 **Clerk Authentication** — Username/password accounts with optional email and Google sign-in
 - 🎨 **Dark Mode** — System-preference-aware theme with localStorage persistence
 - 📱 **Responsive Design** — Fully responsive across mobile, tablet, and desktop
 - 🔍 **Search & Filter** — Search services/countries, filter orders by status/type
@@ -66,9 +66,9 @@
 | **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript 5 |
 | **Styling** | Vanilla CSS (BEM methodology, CSS custom properties) |
-| **Auth** | JWT via HTTP-only cookies |
+| **Auth** | Clerk (username/password, optional email, Google OAuth, bot protection) |
 | **API** | SMSpool API for number provisioning |
-| **Storage** | In-memory Map store (production-ready for SQLite/Postgres) |
+| **Database** | Neon PostgreSQL with an auditable wallet ledger |
 | **Deployment** | Vercel |
 
 ---
@@ -79,11 +79,7 @@
 verifio/
 ├── app/
 │   ├── api/
-│   │   ├── auth/
-│   │   │   ├── login/route.ts      # POST — authenticate user
-│   │   │   ├── logout/route.ts     # POST — clear session
-│   │   │   ├── me/route.ts         # GET — current user info
-│   │   │   └── register/route.ts   # POST — create account
+│   │   ├── auth/me/route.ts        # GET — current signed-in profile
 │   │   ├── orders/route.ts         # GET — fetch order history
 │   │   ├── rentals/route.ts        # GET/DELETE — manage rentals
 │   │   └── verify/
@@ -104,11 +100,13 @@ verifio/
 │   ├── Footer.tsx                  # Site footer with links
 │   └── Icons.tsx                   # SVG icon library (30+ icons)
 ├── lib/
-│   ├── auth.ts                     # JWT utilities, password hashing
+│   ├── auth.ts                     # Clerk identity → Neon profile synchronization
+│   ├── request-security.ts         # Origin validation and rate-limit keys
+│   ├── neon.ts                     # Server-side Neon database client
 │   ├── smspool.ts                  # SMSpool API client
 │   ├── store.ts                    # In-memory data store
 │   └── types.ts                    # TypeScript interfaces & constants
-├── middleware.ts                    # Auth middleware for protected routes
+├── proxy.ts                         # Clerk request context
 ├── vercel.json                     # Vercel deployment configuration
 ├── next.config.ts                  # Next.js configuration
 └── tsconfig.json                   # TypeScript configuration
@@ -143,8 +141,17 @@ cp .env.example .env.local
 Create `.env.local` with the following:
 
 ```env
-# JWT secret (generate a strong random string)
-JWT_SECRET=your-secret-here
+# Neon (use the pooled URL at runtime and the direct URL for migrations)
+DATABASE_URL=your-neon-pooled-url
+DIRECT_URL=your-neon-direct-url
+
+# Clerk (configure username + password, optional email, and Google in Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+CLERK_SECRET_KEY=your-clerk-secret-key
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/register
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
 
 # SMSpool API key
 SMSPOOL_API_KEY=your-smspool-api-key
@@ -161,6 +168,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+Before the first run, apply and verify the Neon schema:
+
+```bash
+npm run db:migrate
+npm run db:check
+```
+
 ### Production Build
 
 ```bash
@@ -172,15 +186,12 @@ npm start
 
 ## API Reference
 
-All API routes are prefixed with `/api/`. Protected routes require a valid JWT cookie.
+All API routes are prefixed with `/api/`. Protected routes verify the active Clerk session server-side and use its immutable user ID for Neon ownership checks.
 
 ### Authentication
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `POST` | `/api/auth/register` | Create a new account | No |
-| `POST` | `/api/auth/login` | Sign in | No |
-| `POST` | `/api/auth/logout` | Sign out | Yes |
 | `GET` | `/api/auth/me` | Get current user | Yes |
 
 ### Verification
@@ -218,8 +229,9 @@ Or connect your GitHub repository to Vercel for automatic deployments on every p
 ### Production Checklist
 
 1. Set all environment variables in Vercel dashboard
-2. Use a strong, unique `JWT_SECRET` (≥ 32 characters)
-3. Replace the in-memory store with a database (SQLite, PostgreSQL, or MongoDB)
+2. In Clerk, enable Username + Password, leave email optional, enable Google, and enable Smart bot sign-up protection
+3. Set the Neon and Clerk environment variables in Vercel
+4. Run `npm run db:migrate` against the production Neon database before deploying
 4. Enable HTTPS (automatic on Vercel)
 5. Set up a custom domain
 

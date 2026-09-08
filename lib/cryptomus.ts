@@ -46,10 +46,9 @@ interface CryptomusPaymentResponse {
 }
 
 function generateSign(data: Record<string, unknown>): string {
-  const crypto = require('crypto');
   const jsonData = JSON.stringify(data);
   const base64 = Buffer.from(jsonData).toString('base64');
-  return crypto.createHash('md5').update(base64 + CRYPTOMUS_API_KEY).digest('hex');
+  return createHash('md5').update(base64 + CRYPTOMUS_API_KEY).digest('hex');
 }
 
 async function cryptomusRequest<T>(
@@ -136,5 +135,7 @@ export async function getPaymentServices() {
  */
 export function verifyWebhookSign(body: Record<string, unknown>, receivedSign: string): boolean {
   const expectedSign = generateSign(body);
-  return expectedSign === receivedSign;
+  if (!receivedSign || receivedSign.length !== expectedSign.length) return false;
+  return timingSafeEqual(Buffer.from(expectedSign), Buffer.from(receivedSign));
 }
+import { createHash, timingSafeEqual } from 'node:crypto';

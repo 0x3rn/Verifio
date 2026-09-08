@@ -1,23 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { WalletIcon, ClipboardIcon, PhoneIcon, ArrowLeftIcon, SpinnerIcon } from '@/components/Icons';
+import { WalletIcon, ArrowLeftIcon, SpinnerIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 
-export default function BillingPage() {
+function BillingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState<string>('10');
   const [customAmount, setCustomAmount] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [paymentUrl, setPaymentUrl] = useState('');
-  const [success, setSuccess] = useState(false);
+  const success = searchParams.get('success') === '1';
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -37,16 +37,6 @@ export default function BillingPage() {
     };
     fetchUser();
   }, [router]);
-
-  // Check for success param in URL
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('success') === '1') {
-        setSuccess(true);
-      }
-    }
-  }, []);
 
   const handleDeposit = async () => {
     const numAmount = parseFloat(amount);
@@ -204,5 +194,13 @@ export default function BillingPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="auth-page"><SpinnerIcon className="spinner--lg spinner--indigo" /></div>}>
+      <BillingContent />
+    </Suspense>
   );
 }

@@ -12,7 +12,7 @@ export function Footer() {
   if (isAuthPage) return null;
 
   return (
-    <footer className="footer">
+    <footer className="footer v-footer">
       <div className="page-container footer__inner">
         <div className="footer__grid">
           {/* Brand */}

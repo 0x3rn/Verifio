@@ -1,16 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { orderRentalNumber, cancelRental, getRentalMessages, applyMarkup } from '@/lib/smspool';
-import { prisma, saveRental, getRental, getUserRentals, updateRental, generateRentalId } from '@/lib/db';
-import type { RentalNumber, PlanTier } from '@/lib/types';
+import { acquireRequestLock, consumeRateLimit, createRentalWithDebit, generateRentalId, getRental, getUserById, getUserRentals, releaseRequestLock, updateRental } from '@/lib/db';
+import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
+import type { PlanTier } from '@/lib/types';
 import { PLAN_DURATIONS } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
+  let purchaseLockKey: string | null = null;
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
+    if (!isSameOriginRequest(request)) {
+      return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
+    }
+    const allowed = await consumeRateLimit({
+      scope: 'rental-order', key: requestRateLimitKey(request, user.id), limit: 5, windowSeconds: 30 * 60,
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many rental requests. Please try again later.' }, { status: 429 });
+    }
+    const locked = await acquireRequestLock({ scope: 'paid-purchase', key: user.id });
+    if (!locked) {
+      return NextResponse.json({ error: 'A purchase is already being processed for this account. Please wait a moment.' }, { status: 409 });
+    }
+    purchaseLockKey = user.id;
 
     const body = await request.json();
     const { country, service, plan } = body as { country: string; service: string; plan: PlanTier };
@@ -28,8 +44,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Quick balance pre-check to avoid wasting an upstream purchase
-    const dbUserPrecheck = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!dbUserPrecheck || dbUserPrecheck.balance <= 0) {
+    const dbUserPrecheck = await getUserById(user.id);
+    if (!dbUserPrecheck || Number(dbUserPrecheck.balanceCents) <= 0) {
       return NextResponse.json({ error: 'Insufficient balance. Please add funds to your wallet.' }, { status: 400 });
     }
 
@@ -42,34 +58,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + planConfig.days * 24 * 60 * 60 * 1000).toISOString();
 
     // Atomic: save rental + deduct balance in a single transaction
-    await prisma.$transaction(async (tx) => {
-      const dbUser = await tx.user.findUnique({ where: { id: user.id } });
-      if (!dbUser || dbUser.balance < cost) {
-        throw new Error('Insufficient balance. Please add funds to your wallet.');
-      }
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: { balance: { decrement: cost } },
-      });
-
-      await tx.rental.create({
-        data: {
-          id: rentalId,
-          userId: user.id,
-          phoneNumber: String(result.number),
-          country,
-          service,
-          status: 'active',
-          plan,
-          cost,
-          smspoolRentalId: result.rental_code,
-          startedAt: new Date(now),
-          expiresAt: new Date(expiresAt),
-          renewedAt: null,
-        },
-      });
-    });
+    await createRentalWithDebit({ id: rentalId, userId: user.id, phoneNumber: String(result.number), country, service, status: 'active', plan, cost, smspoolRentalId: result.rental_code, startedAt: now, expiresAt, renewedAt: null });
 
     return NextResponse.json({
       success: true,
@@ -88,6 +77,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to order rental number.';
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    if (purchaseLockKey) await releaseRequestLock({ scope: 'paid-purchase', key: purchaseLockKey });
   }
 }
 
@@ -155,10 +146,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Rental cancelled successfully.' });
   } catch (error) {
     let message = error instanceof Error ? error.message : 'Failed to cancel rental.';
-    if (message.includes('Prisma') || message.includes('relation') || message.includes('column')) {
-      console.error('DEV_DB_001:', error);
-      message = 'System error: DEV_DB_001';
-    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,8 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { consumeRateLimit } from '@/lib/db';
+import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    if (!isSameOriginRequest(request)) {
+      return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
+    }
+    const allowed = await consumeRateLimit({
+      scope: 'contact', key: requestRateLimitKey(request), limit: 3, windowSeconds: 60 * 60,
+    });
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many messages. Please try again later.' }, { status: 429 });
+    }
     const body = await request.json();
     const { name, email, subject, message } = body;
 
