@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
-import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
+import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
@@ -14,15 +14,9 @@ export function Navbar() {
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (isAuthPage) return;
@@ -154,47 +148,10 @@ export function Navbar() {
               </div>
             )}
 
-            {/* Mobile menu toggle */}
-            {!isLoading && !user && (
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="mobile-toggle"
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? <XIcon className="icon-md" /> : <MenuIcon className="icon-md" />}
-              </button>
-            )}
             </>
             )}
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div className="mobile-menu">
-            <div className="mobile-menu__inner">
-              <Link href="/#features" className="mobile-menu__link">Features</Link>
-              <Link href="/#pricing" className="mobile-menu__link">Pricing</Link>
-              <Link href="/#how-it-works" className="mobile-menu__link">How It Works</Link>
-              {user && (
-                <>
-                  <div className="mobile-menu__divider" />
-                  <Link href="/dashboard" className="mobile-menu__link">Dashboard</Link>
-                  <Link href="/dashboard/orders" className="mobile-menu__link">Order History</Link>
-                  <Link href="/dashboard/rentals" className="mobile-menu__link">My Rentals</Link>
-                  <Link href="/dashboard/billing" className="mobile-menu__link">Add Funds</Link>
-                </>
-              )}
-              {!user && (
-                <>
-                  <div className="mobile-menu__divider" />
-                  <Link href="/login" className="mobile-menu__signin">Sign In</Link>
-                  <Link href="/contact" className="mobile-menu__highlight">Contact Us</Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
     </nav>

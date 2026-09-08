@@ -49,7 +49,7 @@ export default function Home() {
               <div className="v-console__prompt">NUMBER ISSUED</div>
               <div className="v-console__number"><span>+44</span> 7700 900 482 <button type="button" aria-label="Example copy control">⧉</button></div>
               <div className="v-console__status"><span className="v-live"><i /> Listening for code</span><strong>04:57</strong></div>
-              <div className="v-console__code"><span>Incoming code</span><b>· · · · · ·</b></div>
+              <div className="v-console__code"><span>Incoming code</span><b>482731</b></div>
             </div>
             <div className="v-console__foot"><span>Account balance</span><strong>$24.00</strong><span className="v-console__marker">●</span></div>
           </div>

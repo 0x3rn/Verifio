@@ -1,4 +1,7 @@
+import Link from 'next/link';
 import { SignUp } from '@clerk/nextjs';
+import { AuthFormLoading } from '@/components/AuthFormLoading';
+import { ArrowLeftIcon } from '@/components/Icons';
 
 export default function RegisterPage() {
   return (
@@ -9,8 +12,17 @@ export default function RegisterPage() {
           <p className="auth-header__subtitle">Email is optional. Add it for account and password recovery.</p>
         </div>
         <div className="auth-form-card clerk-auth-shell">
+          <div className="auth-back-link-wrap">
+            <Link href="/" className="auth-back-link"><span className="auth-back-link__arrow" aria-hidden="true"><ArrowLeftIcon className="icon-sm" /></span> Back to home</Link>
+          </div>
           {/* Clerk's prebuilt flow includes Smart CAPTCHA when bot protection is enabled. */}
-          <SignUp path="/register" routing="path" signInUrl="/login" fallbackRedirectUrl="/dashboard" />
+          <SignUp
+            path="/register"
+            routing="path"
+            signInUrl="/login"
+            fallbackRedirectUrl="/dashboard"
+            fallback={<AuthFormLoading label="Loading registration form" />}
+          />
         </div>
       </div>
     </div>

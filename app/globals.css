@@ -3931,10 +3931,6 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   border-radius: 0.75rem;
 }
 
-.clerk-auth-back {
-  margin-top: 1rem;
-}
-
 /* Approved Verifio connected-signal mark. Image assets supersede the earlier
    CSS-only V placeholders in the shared navigation and footer. */
 .v-nav .navbar__logo::before,
@@ -4040,6 +4036,66 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   background: #f0e8fb;
 }
 
+/* Keep the sign-in hover state inside the connected-signal navbar palette. */
+.v-nav .btn-signin:hover {
+  color: #5b3a9d;
+  background: #f0e8fb;
+}
+
+/* Branded placeholder shown while Clerk mounts its managed auth form. */
+.clerk-auth-loading {
+  display: grid;
+  gap: 1rem;
+  padding: 0.25rem;
+}
+
+.clerk-auth-loading__social,
+.clerk-auth-loading__field,
+.clerk-auth-loading__button,
+.clerk-auth-loading__footer {
+  border-radius: 0.65rem;
+  background: linear-gradient(90deg, #f1e8fb 25%, #fffaf4 50%, #f1e8fb 75%);
+  background-size: 200% 100%;
+  animation: clerk-auth-loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.clerk-auth-loading__social { height: 2.75rem; }
+.clerk-auth-loading__divider { height: 1px; margin: 0.25rem 0; background: #eadff1; }
+.clerk-auth-loading__field { height: 3.1rem; }
+.clerk-auth-loading__field--short { width: 42%; height: 0.75rem; border-radius: 0.35rem; }
+.clerk-auth-loading__button { height: 2.9rem; margin-top: 0.25rem; }
+.clerk-auth-loading__footer { width: 68%; height: 0.75rem; margin: 0.4rem auto 0; border-radius: 0.35rem; }
+
+@keyframes clerk-auth-loading-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clerk-auth-loading__social,
+  .clerk-auth-loading__field,
+  .clerk-auth-loading__button,
+  .clerk-auth-loading__footer {
+    animation: none;
+  }
+}
+
+/* Keep the workflow steps visually distinct as individual cards. */
+.v-section--workflow .v-steps {
+  gap: 1rem;
+  background: transparent;
+  border: 0;
+}
+
+.v-section--workflow .v-steps article {
+  min-height: 17rem;
+  padding: 1.75rem;
+  border: 1px solid #dbd0c7;
+  border-radius: 1.2rem;
+  background: #fffdf9;
+  box-shadow: 0 0.75rem 1.5rem #51356c0d;
+}
+
 /* Keep Clerk's embedded form compact: hiding only its title left the empty
    header container above the form, which read as an oversized blank panel. */
 .auth-page {
@@ -4052,6 +4108,48 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 
 .auth-form-card {
   padding: 1.25rem;
+}
+
+.auth-back-link-wrap {
+  margin: 0 0 1.25rem;
+}
+
+.auth-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  border: 1px solid #ded1ec;
+  border-radius: 999px;
+  background: #fff7ef;
+  color: #5b3a9d;
+  font: 700 0.68rem var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.auth-back-link:hover {
+  transform: translateX(-2px);
+  border-color: #cdbbe1;
+  background: #f0e8fb;
+  color: #5b3a9d;
+}
+
+.auth-back-link__arrow {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: #ff725b;
+  color: #fffaf4;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-back-link:hover .auth-back-link__arrow {
+  transform: translateX(-2px);
+  background: #d85843;
 }
 
 .clerk-auth-shell .cl-header {

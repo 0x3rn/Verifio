@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { SignIn } from '@clerk/nextjs';
+import { AuthFormLoading } from '@/components/AuthFormLoading';
+import { ArrowLeftIcon } from '@/components/Icons';
 
 export default function LoginPage() {
   return (
@@ -10,8 +12,16 @@ export default function LoginPage() {
           <p className="auth-header__subtitle">Sign in with your username and password, or continue with Google.</p>
         </div>
         <div className="auth-form-card clerk-auth-shell">
-          <SignIn path="/login" routing="path" signUpUrl="/register" fallbackRedirectUrl="/dashboard" />
-          <p className="auth-footer__text clerk-auth-back"><Link href="/">← Back to Home</Link></p>
+          <div className="auth-back-link-wrap">
+            <Link href="/" className="auth-back-link"><span className="auth-back-link__arrow" aria-hidden="true"><ArrowLeftIcon className="icon-sm" /></span> Back to home</Link>
+          </div>
+          <SignIn
+            path="/login"
+            routing="path"
+            signUpUrl="/register"
+            fallbackRedirectUrl="/dashboard"
+            fallback={<AuthFormLoading label="Loading sign-in form" />}
+          />
         </div>
       </div>
     </div>
