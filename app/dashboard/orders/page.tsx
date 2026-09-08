@@ -210,7 +210,7 @@ export default function OrdersPage() {
                       {isWaiting ? (
                         <span className="order-countdown">{formatTime(timeLeft)}</span>
                       ) : (
-                        '—'
+                        '-'
                       )}
                     </div>
                   </div>

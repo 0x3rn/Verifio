@@ -11,7 +11,6 @@ import "./globals.css";
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-verifio-display",
   subsets: ["latin"],
-  display: "swap",
 });
 
 const plexSans = IBM_Plex_Sans({
@@ -29,7 +28,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Verifio — OTP & Phone Verification Platform",
+  title: "Verifio | OTP & Phone Verification Platform",
   description:
     "Verifio is a complete OTP verification platform supporting SMS verification, voice calls, and rental phone numbers for all major services. Powered by SMSpool.",
   keywords: ["OTP", "verification", "SMS", "voice", "rental numbers", "phone verification"],
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
     apple: "/favicon.png",
   },
   openGraph: {
-    title: "Verifio — OTP & Phone Verification Platform",
+    title: "Verifio | OTP & Phone Verification Platform",
     description:
       "SMS, voice, and rental phone number verification for Google, WhatsApp, Telegram, and more.",
     type: "website",

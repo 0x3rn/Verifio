@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const recipientEmail = process.env.CONTACT_EMAIL_TO || process.env.CONTACT_EMAIL_USER;
 
     if (!emailUser || !emailPass) {
-      // Email not configured yet — store or log the message instead
+      // Email not configured yet. Store or log the message instead
       console.log('[Contact Form Submission]', { name, email, subject, message });
       return NextResponse.json({
         success: true,

@@ -10,7 +10,7 @@ export default function LoginPage() {
           <p className="auth-header__subtitle">Sign in with your username and password, or continue with Google.</p>
         </div>
         <div className="auth-form-card clerk-auth-shell">
-          <SignIn signUpUrl="/register" fallbackRedirectUrl="/dashboard" />
+          <SignIn path="/login" routing="path" signUpUrl="/register" fallbackRedirectUrl="/dashboard" />
           <p className="auth-footer__text clerk-auth-back"><Link href="/">← Back to Home</Link></p>
         </div>
       </div>

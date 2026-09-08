@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ country: null }, { status: 200 });
     }
 
-    // Use ipapi.co — free tier: 1000 req/day per IP, no API key
+    // Use ipapi.co. Free tier: 1000 req/day per IP, no API key
     // Falls back gracefully if rate-limited
     const res = await fetch(`https://ipapi.co/${ip}/json/`, {
       signal: AbortSignal.timeout(3000),

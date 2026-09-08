@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
               {users.map((u, i) => (
                 <tr key={u.id} style={{ borderBottom: i === users.length - 1 ? 'none' : '1px solid var(--card-border)' }}>
                   <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--foreground)' }}>{u.username}</td>
-                  <td style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.875rem' }}>{u.email || '—'}</td>
+                  <td style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.875rem' }}>{u.email || '-'}</td>
                   <td style={{ padding: '1rem', fontWeight: 600, color: '#10b981' }}>${u.balance.toFixed(2)}</td>
                   <td style={{ padding: '1rem', color: 'var(--muted)', fontSize: '0.875rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                   <td style={{ padding: '1rem', textAlign: 'right' }}>

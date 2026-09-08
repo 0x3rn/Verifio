@@ -3,16 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from '@/app/providers';
 import { useClerk } from '@clerk/nextjs';
-import { SunIcon, MoonIcon, HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
+import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, MenuIcon, XIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
-  const { theme, toggleTheme } = useTheme();
   const { signOut } = useClerk();
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +65,7 @@ export function Navbar() {
     setUserMenuOpen(false);
   };
 
-  // Don't render navbar on auth pages — keep them clean
+  // Don't render navbar on auth pages to keep them clean
   if (isAuthPage) return null;
 
   // Always use solid background on dashboard pages to prevent text collision
@@ -105,21 +103,6 @@ export function Navbar() {
               <div className="v-nav__loading" aria-label="Loading account" />
             ) : (
               <>
-                {/* Theme toggle — only shown when NOT logged in */}
-                {!user && (
-                  <button
-                    onClick={toggleTheme}
-                    className="theme-toggle"
-                    aria-label="Toggle theme"
-                  >
-                    {theme === 'dark' ? (
-                      <SunIcon className="icon-md" />
-                    ) : (
-                      <MoonIcon className="icon-md" />
-                    )}
-                  </button>
-                )}
-
                 {/* User menu / auth buttons */}
                 {user ? (
               <div className="user-menu" ref={userMenuRef}>
@@ -157,22 +140,6 @@ export function Navbar() {
                     <Link href="/dashboard/billing" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <WalletIcon className="icon-md" /> Add Funds
                     </Link>
-                    <div className="user-menu__dropdown-divider" />
-                    {/* Theme toggle inside user dropdown */}
-                    <button
-                      onClick={toggleTheme}
-                      className="user-menu__dropdown-item"
-                    >
-                      {theme === 'dark' ? (
-                        <>
-                          <SunIcon className="icon-md" /> Light Mode
-                        </>
-                      ) : (
-                        <>
-                          <MoonIcon className="icon-md" /> Dark Mode
-                        </>
-                      )}
-                    </button>
                     <div className="user-menu__dropdown-divider" />
                     <button onClick={handleLogout} className="user-menu__dropdown-logout">
                       <LogoutIcon className="icon-md" /> Sign Out

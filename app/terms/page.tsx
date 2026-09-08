@@ -15,10 +15,10 @@ export default function TermsPage() {
 
         <h2 className="legal-page__heading">1. Definitions</h2>
         <ul className="legal-page__list">
-          <li><strong>"Verifio"</strong> — The OTP and phone verification platform operated by us</li>
-          <li><strong>"Service"</strong> — The SMS verification, voice verification, and phone number rental services provided through our platform</li>
-          <li><strong>"User"</strong> — Any individual or entity that creates an account and uses our service</li>
-          <li><strong>"Provider"</strong> — Third-party phone number provisioning services used by our platform</li>
+          <li><strong>"Verifio"</strong>: The OTP and phone verification platform operated by us</li>
+          <li><strong>"Service"</strong>: The SMS verification, voice verification, and phone number rental services provided through our platform</li>
+          <li><strong>"User"</strong>: Any individual or entity that creates an account and uses our service</li>
+          <li><strong>"Provider"</strong>: Third-party phone number provisioning services used by our platform</li>
         </ul>
 
         <h2 className="legal-page__heading">2. Account Registration</h2>

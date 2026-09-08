@@ -341,7 +341,7 @@ export default function DashboardPage() {
                     {pricing.successRate && <span className="dash-price__success">{pricing.successRate}% success rate</span>}
                   </>
                 ) : (
-                  <span className="dash-price__value">—</span>
+                  <span className="dash-price__value">-</span>
                 )}
               </div>
               <button 

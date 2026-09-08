@@ -44,3 +44,6 @@ next-env.d.ts
 /lib/generated/prisma
 
 error_codes.txt
+.playwright-browsers
+*tests/
+test-results/
