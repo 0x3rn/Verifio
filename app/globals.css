@@ -3933,6 +3933,28 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   margin-top: 1rem;
 }
 
+/* Approved Verifio connected-signal mark. Image assets supersede the earlier
+   CSS-only V placeholders in the shared navigation and footer. */
+.v-nav .navbar__logo::before,
+.v-footer .footer__brand-logo::before {
+  content: none;
+  display: none;
+}
+
+.v-nav .navbar__logo-img {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.v-footer .footer__brand-img {
+  display: block;
+  width: 2.35rem;
+  height: 2.35rem;
+  object-fit: contain;
+}
+
 /* Technical typography system: product-led display, highly legible body, and
    mono reserved for data, labels, actions, and verification artefacts. */
 .v-home h1,

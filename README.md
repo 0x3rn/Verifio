@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="public/globe.svg" alt="Verifio" width="40" />
+  <img src="public/logo.png" alt="Verifio" width="40" />
   <br/>
   Verifio
 </h1>
