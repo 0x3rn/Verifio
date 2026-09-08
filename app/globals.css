@@ -12,8 +12,11 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
 
-  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-verifio-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-verifio-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-verifio-mono), ui-monospace, SFMono-Regular, monospace;
+  /* Compatibility alias for the existing utility-oriented component rules. */
+  --font-geist-mono: var(--font-verifio-mono);
 }
 
 /* Light theme */
@@ -3928,4 +3931,48 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 
 .clerk-auth-back {
   margin-top: 1rem;
+}
+
+/* Technical typography system: product-led display, highly legible body, and
+   mono reserved for data, labels, actions, and verification artefacts. */
+.v-home h1,
+.v-home h2,
+.v-home h3,
+.auth-header__title,
+.dash-header__title,
+.sub-page-header__title,
+.legal-page__title,
+.legal-page__heading,
+.v-nav .navbar__logo-text,
+.v-footer .footer__brand-name {
+  font-family: var(--font-display);
+  letter-spacing: -0.045em;
+}
+
+.v-nav .navbar__link,
+.v-nav .btn-signin,
+.v-nav .btn-cta,
+.v-kicker,
+.v-button,
+.v-console,
+.v-marquee,
+.v-directory span,
+.v-mode-tabs button,
+.form-field__label,
+.legal-page__updated,
+.contact-form__label,
+.cl-footerActionText,
+.cl-formFieldLabel,
+.cl-formFieldInputShowPasswordButton,
+.cl-identityPreviewText {
+  font-family: var(--font-mono);
+}
+
+.v-nav .navbar__link,
+.v-kicker,
+.form-field__label,
+.legal-page__updated,
+.contact-form__label,
+.cl-formFieldLabel {
+  letter-spacing: 0.08em;
 }
