@@ -4773,9 +4773,11 @@ main:has(.billing-form) .billing-form__title { color: #39234e; font-family: Geor
 main:has(.billing-form) .billing-presets .selector-btn { border-color: #dfd1e8; border-radius: 0.7rem; background: #fffdf9; color: #786a80; }
 main:has(.billing-form) .billing-presets .selector-btn:hover { border-color: #bca6d5; background: #fbf7ff; color: #39234e; }
 main:has(.billing-form) .billing-presets .selector-btn--active { border-color: #5b3a9d !important; background: #f1e9fb !important; color: #5b3a9d !important; }
-main:has(.billing-form) .billing-custom__input { border-color: #dfd1e8; background: #fffdf9; color: #39234e; color-scheme: light; }
+main:has(.billing-form) .billing-custom__input { appearance: textfield; border-color: #dfd1e8; background: #fffdf9; color: #39234e; color-scheme: light; }
+main:has(.billing-form) .billing-custom__input::-webkit-inner-spin-button,
+main:has(.billing-form) .billing-custom__input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 main:has(.billing-form) .billing-custom__input::placeholder { color: #8d7897; opacity: 1; }
-main:has(.billing-form) .billing-custom__input:focus { border-color: #ff725b; box-shadow: 0 0 0 3px #ff725b22; }
+main:has(.billing-form) .billing-custom__input:focus { border-color: #5b3a9d; box-shadow: 0 0 0 3px #5b3a9d22; }
 main:has(.billing-form) .billing-custom__dollar { color: #5b3a9d; }
 main:has(.billing-form) .dashboard-submit { border-radius: 999px; background: #5b3a9d; color: #fffaf4; box-shadow: none; }
 main:has(.billing-form) .dashboard-submit:hover { background: #402778; }

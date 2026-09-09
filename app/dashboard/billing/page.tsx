@@ -99,7 +99,7 @@ function BillingContent() {
         <div>
           <h1 className="sub-page-header__title">Add Funds</h1>
           <p className="sub-page-header__subtitle">
-            Deposit cryptocurrency to fund your verification orders.
+            Deposit funds to pay for your orders.
           </p>
         </div>
       </div>
@@ -190,7 +190,7 @@ function BillingContent() {
         </button>
 
         <p className="billing-disclaimer">
-          You will be redirected to Cryptomus to complete your payment. Minimum deposit: $5.00.
+          You will be redirected to our payments provider to complete your payment. Minimum deposit: $5.00.
         </p>
       </div>
     </div>
