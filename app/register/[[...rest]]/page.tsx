@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { SignUp } from '@clerk/nextjs';
-import { AuthFormLoading } from '@/components/AuthFormLoading';
 import { ArrowLeftIcon } from '@/components/Icons';
 
 export default function RegisterPage() {
@@ -21,7 +20,6 @@ export default function RegisterPage() {
             routing="path"
             signInUrl="/login"
             fallbackRedirectUrl="/dashboard"
-            fallback={<AuthFormLoading label="Loading registration form" />}
           />
         </div>
       </div>

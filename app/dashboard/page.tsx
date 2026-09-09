@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
 import { Combobox } from '@/components/Combobox';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
@@ -28,6 +29,7 @@ function formatTime(ms: number): string {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const hasIdentified = useRef(false);
@@ -57,14 +59,22 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (!isAuthLoaded) return;
+
+    if (!isSignedIn) {
+      router.replace('/login');
+      return;
+    }
+
+    let cancelled = false;
     const fetchUserAndOrders = async () => {
       try {
         const userRes = await fetch('/api/auth/me');
         if (userRes.ok) { 
           const data = await userRes.json(); 
-          setUser(data.user); 
+          if (!cancelled) setUser(data.user);
         } else { 
-          router.push('/login'); 
+          if (userRes.status === 401) router.replace('/login');
           return;
         }
 
@@ -72,15 +82,16 @@ export default function DashboardPage() {
         if (ordersRes.ok) {
           const data = await ordersRes.json();
           const active = (data.orders || []).filter((o: VerificationOrder) => o.status === 'waiting_for_code');
-          setActiveOrders(active);
+          if (!cancelled) setActiveOrders(active);
         }
-      } catch { 
-        router.push('/login'); 
+      } catch {
+        if (!cancelled) setStatusMessage('We could not load your dashboard. Please refresh and try again.');
       }
-      finally { setLoading(false); }
+      finally { if (!cancelled) setLoading(false); }
     };
     fetchUserAndOrders();
-  }, [router]);
+    return () => { cancelled = true; };
+  }, [isAuthLoaded, isSignedIn, router]);
 
   useEffect(() => {
     const fetchLists = async () => {
