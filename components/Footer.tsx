@@ -7,9 +7,10 @@ import { usePathname } from 'next/navigation';
 export function Footer() {
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isDashboard = pathname.startsWith('/dashboard');
 
   // Don't render footer on auth pages
-  if (isAuthPage) return null;
+  if (isAuthPage || isDashboard) return null;
 
   return (
     <footer className="footer v-footer">
@@ -22,7 +23,7 @@ export function Footer() {
               <span className="footer__brand-name">Verifio</span>
             </Link>
             <p className="footer__brand-desc">
-              Reliable OTP and phone verification platform. SMS, voice calls, and rental numbers for all your verification needs.
+              Reliable OTP, proxy, and phone-number services for the workflows you need to keep moving.
             </p>
           </div>
 
@@ -31,7 +32,7 @@ export function Footer() {
             <h4 className="footer__heading">Services</h4>
             <ul className="footer__links">
               <li><Link href="/#features" className="footer__link">SMS Verification</Link></li>
-              <li><Link href="/#features" className="footer__link">Voice Verification</Link></li>
+              <li><Link href="/#features" className="footer__link">Residential Proxies</Link></li>
               <li><Link href="/#features" className="footer__link">Rental Numbers</Link></li>
             </ul>
           </div>

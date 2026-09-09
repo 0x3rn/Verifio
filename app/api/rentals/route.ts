@@ -145,7 +145,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Rental cancelled successfully.' });
   } catch (error) {
-    let message = error instanceof Error ? error.message : 'Failed to cancel rental.';
+    const message = error instanceof Error ? error.message : 'Failed to cancel rental.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

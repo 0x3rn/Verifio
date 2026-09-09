@@ -27,13 +27,16 @@ function ThemeContextProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('verifio-theme') as ThemeMode | null;
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setThemeState('dark');
-    }
-    setMounted(true);
+    const timer = window.setTimeout(() => {
+      const stored = localStorage.getItem('verifio-theme') as ThemeMode | null;
+      if (stored === 'light' || stored === 'dark') {
+        setThemeState(stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setThemeState('dark');
+      }
+      setMounted(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

@@ -24,7 +24,7 @@ export default function AdminOverviewPage() {
         } else {
           setError('Failed to load stats');
         }
-      } catch (err) {
+      } catch {
         setError('An error occurred');
       } finally {
         setLoading(false);

@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { orderSMSCode, checkSMSCode, cancelSMSOrder, resendSMSCode, applyMarkup, getPrice, formatPhoneNumber, getCountries, getServices } from '@/lib/smspool';
-import { orderTextVerifiedCode, checkTextVerifiedCode } from '@/lib/textverified';
+import { orderSMSCode, checkSMSCode, cancelSMSOrder, applyMarkup, getPrice, formatPhoneNumber, getCountries, getServices } from '@/lib/smspool';
+import { cancelTextVerifiedOrder, checkTextVerifiedCode, getTextVerifiedPrice, orderTextVerifiedCode } from '@/lib/textverified';
 import { acquireRequestLock, completeOrder, consumeRateLimit, countActiveOrders, createOrderWithDebit, generateOrderId, getOrder, refundOrder, releaseRequestLock, updateOrder } from '@/lib/db';
 import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
+
+interface VerificationCodeResponse {
+  success: number;
+  code?: string;
+  sms?: string;
+  full_sms?: string;
+}
 
 // Order new SMS verification
 export async function POST(request: NextRequest) {
@@ -29,7 +36,7 @@ export async function POST(request: NextRequest) {
     purchaseLockKey = user.id;
 
     const body = await request.json();
-    const { country, service } = body;
+    const { country, service, provider: requestedProvider = 'smspool' } = body;
 
     if (!country || !service) {
       return NextResponse.json(
@@ -47,11 +54,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Get pricing first to determine cost
+    if (requestedProvider !== 'smspool' && requestedProvider !== 'textverified') {
+      return NextResponse.json({ error: 'Unsupported provider.' }, { status: 400 });
+    }
+
+    const smspoolServices = await getServices();
+    const serviceData = smspoolServices.find(s => String(s.ID) === String(service));
+    const serviceName = serviceData?.name || String(service);
+
+    // 1. Get provider pricing first to determine cost
     let cost = 0;
     try {
-      const pricing = await getPrice(country, service);
-      cost = pricing.displayPrice;
+      if (requestedProvider === 'textverified') {
+        const countries = await getCountries();
+        const countryCode = countries.find((item) => String(item.ID) === String(country))?.short_name || String(country);
+        if (countryCode.toUpperCase() !== 'US') {
+          return NextResponse.json({ error: 'Text Verified currently supports US numbers only.' }, { status: 400 });
+        }
+        const pricing = await getTextVerifiedPrice(serviceName);
+        cost = applyMarkup(pricing.basePrice);
+      } else {
+        const pricing = await getPrice(country, service);
+        cost = pricing.displayPrice;
+      }
     } catch {
       // If pricing fails, default to 0 and let balance check fail
     }
@@ -61,29 +86,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unable to determine price. Please try again.' }, { status: 400 });
     }
 
-    // Determine the service name to see if we should route to Textverified
-    const smspoolServices = await getServices();
-    const serviceData = smspoolServices.find(s => String(s.ID) === String(service));
-    const serviceName = serviceData ? serviceData.name.toLowerCase() : '';
-
     let upstreamOrder;
-    let provider = 'smspool';
+    const provider = requestedProvider;
 
     try {
-      if (serviceName === 'whatsapp') {
-        upstreamOrder = await orderTextVerifiedCode('whatsapp');
-        provider = 'textverified';
+      if (requestedProvider === 'textverified') {
+        upstreamOrder = await orderTextVerifiedCode(serviceName);
       } else {
         upstreamOrder = await orderSMSCode(country, service);
       }
-    } catch (err: any) {
-      return NextResponse.json({ error: err.message || 'Failed to order number.' }, { status: 400 });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to order number.';
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     const orderId = generateOrderId();
     const now = new Date().toISOString();
-    // Hardcode 5-minute timer
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const providerExpiry = 'expires_at' in upstreamOrder ? upstreamOrder.expires_at : undefined;
+    const expiresAt = providerExpiry || new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const phoneStr = String(upstreamOrder.number);
     
     // Resolve ISO code for formatting
@@ -110,7 +130,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
   } catch (error) {
-    let message = error instanceof Error ? error.message : 'Failed to order SMS verification.';
+    const message = error instanceof Error ? error.message : 'Failed to order SMS verification.';
     return NextResponse.json({ error: message }, { status: 500 });
   } finally {
     if (purchaseLockKey) await releaseRequestLock({ scope: 'paid-purchase', key: purchaseLockKey });
@@ -151,7 +171,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check for the verification code
-    let codeData;
+    let codeData: VerificationCodeResponse;
     if (order.provider === 'textverified') {
       codeData = await checkTextVerifiedCode(order.smspoolOrderId);
     } else {
@@ -164,7 +184,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         code: codeData.code,
-        fullSms: (codeData as any).sms || (codeData as any).full_sms,
+        fullSms: codeData.sms || codeData.full_sms,
         status: 'completed',
       });
     }
@@ -186,7 +206,7 @@ export async function GET(request: NextRequest) {
       status: 'waiting_for_code',
     });
   } catch (error) {
-    let message = error instanceof Error ? error.message : 'Failed to retrieve code.';
+    const message = error instanceof Error ? error.message : 'Failed to retrieve code.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -211,7 +231,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    await cancelSMSOrder(order.smspoolOrderId);
+    if (order.provider === 'textverified') {
+      await cancelTextVerifiedOrder(order.smspoolOrderId);
+    } else {
+      await cancelSMSOrder(order.smspoolOrderId);
+    }
     await updateOrder(orderId, { status: 'cancelled' });
 
     return NextResponse.json({ success: true, message: 'Order cancelled.' });

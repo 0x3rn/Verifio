@@ -13,12 +13,12 @@ async function main() {
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
-        AND table_name IN ('users', 'verification_orders', 'rentals', 'payments', 'wallet_transactions', 'request_rate_limits', 'request_locks')
+        AND table_name IN ('users', 'verification_orders', 'rentals', 'payments', 'wallet_transactions', 'request_rate_limits', 'request_locks', 'proxy_orders', 'proxy_extensions')
       ORDER BY table_name
     `;
     console.log(`Neon connected: ${connection.database} (PostgreSQL ${connection.version})`);
     console.log(`Verified tables: ${tables.map((table) => table.table_name).join(', ') || 'none'}`);
-    if (tables.length !== 7) throw new Error('Neon schema is incomplete. Run npm run db:migrate.');
+    if (tables.length !== 9) throw new Error('Neon schema is incomplete. Run npm run db:migrate.');
   } finally {
     await sql.end({ timeout: 5 });
   }

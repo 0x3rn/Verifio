@@ -4,16 +4,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
-import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon } from '@/components/Icons';
+import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, GlobeIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
   const { signOut } = useClerk();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isDashboard = pathname.startsWith('/dashboard');
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authCheckFailed, setAuthCheckFailed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -26,8 +28,17 @@ export function Navbar() {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          setAuthCheckFailed(false);
+        } else if (res.status === 401) {
+          setUser(null);
+          setAuthCheckFailed(false);
+        } else {
+          setAuthCheckFailed(true);
         }
-      } catch { /* not logged in */ }
+      } catch {
+        // Keep the dashboard from looking signed out during a transient outage.
+        setAuthCheckFailed(true);
+      }
       finally {
         setIsLoading(false);
       }
@@ -63,8 +74,8 @@ export function Navbar() {
   if (isAuthPage) return null;
 
   // Always use solid background on dashboard pages to prevent text collision
-  const isDashboard = pathname.startsWith('/dashboard');
   const navbarClass = (scrolled || isDashboard) ? 'navbar v-nav navbar--scrolled' : 'navbar v-nav navbar--transparent';
+  const showAccountPlaceholder = isLoading || (isDashboard && authCheckFailed);
 
   return (
     <nav className={navbarClass}>
@@ -93,8 +104,8 @@ export function Navbar() {
 
           {/* Right section */}
           <div className="navbar__actions">
-            {isLoading ? (
-              <div className="v-nav__loading" aria-label="Loading account" />
+            {showAccountPlaceholder ? (
+              <div className="v-nav__account-placeholder" aria-hidden="true" />
             ) : (
               <>
                 {/* User menu / auth buttons */}
@@ -127,6 +138,9 @@ export function Navbar() {
                     )}
                     <Link href="/dashboard/orders" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <ClipboardIcon className="icon-md" /> Order History
+                    </Link>
+                    <Link href="/dashboard/proxies" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
+                      <GlobeIcon className="icon-md" /> Proxies
                     </Link>
                     <Link href="/dashboard/rentals" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <PhoneIcon className="icon-md" /> My Rentals

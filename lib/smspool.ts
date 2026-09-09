@@ -35,13 +35,13 @@ export function applyMarkup(basePrice: number): number {
   return Math.round(basePrice * 1.5 * 100) / 100;
 }
 
-import { parsePhoneNumber, CountryCode } from 'libphonenumber-js';
+import { parsePhoneNumber, type CountryCode } from 'libphonenumber-js';
 
 export function formatPhoneNumber(number: string, countryCode: string): string {
   try {
     const phoneNumber = parsePhoneNumber(number, countryCode.toUpperCase() as CountryCode);
     return phoneNumber.formatInternational();
-  } catch (err) {
+  } catch {
     // Fallback if parsing fails or country code is invalid
     const cleaned = String(number).replace(/\D/g, '');
     return `+${cleaned}`;
@@ -62,6 +62,17 @@ interface SMSPoolCountry {
 interface SMSPoolService {
   ID: number;
   name: string;
+}
+
+interface SMSPoolPriceResponse {
+  price?: string | number;
+  success?: number;
+  message?: string;
+  success_rate?: number;
+}
+
+interface SMSPoolBalanceResponse {
+  balance?: string | number;
 }
 
 // ---- In-memory caches for ID resolution (TTL: 1 hour) ----
@@ -166,12 +177,11 @@ export async function getPrice(country: string, service: string) {
   const countryId = await resolveCountryId(country);
   const serviceId = await resolveServiceId(service);
 
-  const data = await smspoolPost<any>('/request/price', { country: countryId, service: serviceId });
+  const data = await smspoolPost<SMSPoolPriceResponse | 0>('/request/price', { country: countryId, service: serviceId });
 
   // The SMSPool API returns `0` (or an object with success: 0) if the price is unavailable or error.
-  if (data === 0 || data.success === 0) {
-    throw new Error(data.message || 'Unable to retrieve price.');
-  }
+  if (data === 0) throw new Error('Unable to retrieve price.');
+  if (data.success === 0) throw new Error(data.message || 'Unable to retrieve price.');
 
   const basePrice = Number(data.price) || 0;
   return {
@@ -185,7 +195,7 @@ export async function getPrice(country: string, service: string) {
 
 // Get account balance
 export async function getBalance() {
-  const data = await smspoolPost<any>('/request/balance');
+  const data = await smspoolPost<SMSPoolBalanceResponse | null>('/request/balance');
   
   // If data is an object with balance, it's successful.
   if (data && data.balance !== undefined) {
@@ -274,51 +284,6 @@ export async function resendSMSCode(orderId: string) {
   if (data.success !== 1) {
     throw new Error(data.message || 'Failed to resend code.');
   }
-
-  return data;
-}
-
-// Order voice verification
-export async function orderVoiceCode(country: string, service: string) {
-  const countryId = await resolveCountryId(country);
-  const serviceId = await resolveServiceId(service);
-  const data = await smspoolPost<{
-    success: number;
-    number: number | string;
-    order_id: string;
-    country: string;
-    service: string;
-    price: number | string;
-    expires_in: number;
-    message?: string;
-  }>('/purchase/voice', { country: countryId, service: serviceId });
-
-  if (data.success !== 1) {
-    throw new Error(data.message || 'Failed to order voice verification.');
-  }
-
-  return data;
-}
-
-// Check voice code
-export async function checkVoiceCode(orderId: string) {
-  const data = await smspoolPost<{
-    success: number;
-    code: string;
-    number: string;
-    order_id: string;
-    message?: string;
-  }>('/voice/check', { orderid: orderId });
-
-  return data;
-}
-
-// Cancel voice order
-export async function cancelVoiceOrder(orderId: string) {
-  const data = await smspoolPost<{ success: number; message?: string }>(
-    '/voice/cancel',
-    { orderid: orderId }
-  );
 
   return data;
 }

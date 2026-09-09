@@ -30,8 +30,8 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Verifio | OTP & Phone Verification Platform",
   description:
-    "Verifio is a complete OTP verification platform supporting SMS verification, voice calls, and rental phone numbers for all major services. Powered by SMSpool.",
-  keywords: ["OTP", "verification", "SMS", "voice", "rental numbers", "phone verification"],
+    "Verifio is a complete OTP verification platform supporting SMS verification, residential proxies, and rental phone numbers for all major services.",
+  keywords: ["OTP", "verification", "SMS", "residential proxies", "rental numbers", "phone verification"],
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Verifio | OTP & Phone Verification Platform",
     description:
-      "SMS, voice, and rental phone number verification for Google, WhatsApp, Telegram, and more.",
+      "SMS verification, residential proxies, and rental phone numbers for Google, WhatsApp, Telegram, and more.",
     type: "website",
   },
 };

@@ -8,7 +8,7 @@ export default function PrivacyPage() {
         <p className="legal-page__updated">Last updated: September 8, 2026</p>
 
         <p className="legal-page__text">
-          Verifio (&quot;Verifio,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) provides SMS verification, voice verification, and temporary phone-number rental services. This Privacy Policy explains what information we collect, how we use it, when we share it, how long we retain it, and the choices available to you when you use our website, applications, APIs, and related services (collectively, the &quot;Service&quot;).
+          Verifio (&quot;Verifio,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) provides SMS verification, residential proxy access, and temporary phone-number rental services. This Privacy Policy explains what information we collect, how we use it, when we share it, how long we retain it, and the choices available to you when you use our website, applications, APIs, and related services (collectively, the &quot;Service&quot;).
         </p>
         <p className="legal-page__text">
           By using the Service, you acknowledge that you have read this Policy. This Policy should be read together with our <Link href="/terms">Terms of Service</Link>. If you do not agree with this Policy, please do not create an account or use the Service.
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         <p className="legal-page__text">We use information for the following business and operational purposes:</p>
         <ul className="legal-page__list">
           <li>To create, authenticate, maintain, and secure your account.</li>
-          <li>To provision phone numbers, deliver SMS or voice verification services, display received codes, and manage rentals.</li>
+          <li>To provision phone numbers, deliver SMS verification services, display received codes, provide proxy access, and manage rentals.</li>
           <li>To process payments, maintain balances, issue invoices, prevent duplicate credits, investigate disputes, and detect payment abuse.</li>
           <li>To provide customer support, respond to questions, send service notices, and communicate about account or order activity.</li>
           <li>To operate, maintain, troubleshoot, monitor, and improve the Service and its reliability.</li>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
         <p className="legal-page__text">We do not sell your personal information for money. We may disclose information in the following limited circumstances:</p>
         <ul className="legal-page__list">
           <li><strong>Service providers and processors:</strong> companies that host databases and applications, provide authentication, deliver analytics, process payments, send communications, provide customer support, or help us prevent fraud and abuse.</li>
-          <li><strong>Phone-number and messaging providers:</strong> providers that supply numbers, route SMS or voice traffic, retrieve verification messages, or report delivery and order status. We share only the information reasonably needed to fulfill the requested verification service.</li>
+          <li><strong>Phone-number, messaging, and proxy providers:</strong> providers that supply numbers, route SMS traffic, retrieve verification messages, provide proxy access, or report delivery and order status. We share only the information reasonably needed to fulfill the requested service.</li>
           <li><strong>Professional advisers:</strong> lawyers, accountants, auditors, insurers, and consultants who are subject to confidentiality or professional obligations.</li>
           <li><strong>Legal and safety disclosures:</strong> courts, regulators, law-enforcement authorities, or other parties when we reasonably believe disclosure is required or necessary to prevent harm, fraud, abuse, or unlawful conduct.</li>
           <li><strong>Business transfers:</strong> a buyer, investor, successor, or adviser in connection with a merger, financing, acquisition, reorganization, sale of assets, or similar transaction.</li>

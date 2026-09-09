@@ -37,7 +37,8 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => {
-    void fetchUsers();
+    const timer = window.setTimeout(() => { void fetchUsers(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleAddFunds = async (e: React.FormEvent) => {

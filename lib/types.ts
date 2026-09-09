@@ -17,13 +17,41 @@ export interface VerificationOrder {
   phoneNumber: string;
   code: string;
   status: 'pending' | 'waiting_for_code' | 'completed' | 'expired' | 'cancelled' | 'refunded';
-  type: 'sms' | 'voice';
+  type: 'sms';
   cost: number;
   smspoolOrderId: string;
   provider: string;
   createdAt: string;
   completedAt: string | null;
   expiresAt: string;
+}
+
+export type ProxyOrderStatus = 'pending' | 'active' | 'failed' | 'expired' | 'cancelled';
+
+export interface ProxyPackage {
+  id: number;
+  name: string;
+  bandwidthGb: number;
+  price: number;
+  displayPrice: number;
+  ratePerGb: number;
+  lengthDays: number;
+  features: string[];
+  extendable: boolean;
+  extensionDays: number;
+}
+
+export interface ProxyOrder {
+  id: string;
+  userId: string;
+  providerIdentifier: string | null;
+  packageId: number;
+  packageName: string;
+  bandwidthGb: number;
+  cost: number;
+  status: ProxyOrderStatus;
+  createdAt: string;
+  expiresAt: string | null;
 }
 
 export interface RentalNumber {

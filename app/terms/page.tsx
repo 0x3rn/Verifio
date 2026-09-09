@@ -8,7 +8,7 @@ export default function TermsPage() {
         <p className="legal-page__updated">Last updated: September 8, 2026</p>
 
         <p className="legal-page__text">
-          These Terms of Service (&quot;Terms&quot;) form a legally binding agreement between you and Verifio (&quot;Verifio,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) governing your access to and use of the Verifio website, applications, APIs, dashboard, SMS verification, voice verification, phone-number rental, payment, and support services (collectively, the &quot;Service&quot;).
+          These Terms of Service (&quot;Terms&quot;) form a legally binding agreement between you and Verifio (&quot;Verifio,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) governing your access to and use of the Verifio website, applications, APIs, dashboard, SMS verification, residential proxy, phone-number rental, payment, and support services (collectively, the &quot;Service&quot;).
         </p>
         <p className="legal-page__text">
           By creating an account, clicking to accept these Terms, placing an order, or accessing or using the Service, you agree to be bound by these Terms and our <Link href="/privacy">Privacy Policy</Link>. If you do not agree, do not create an account or use the Service.
@@ -20,10 +20,10 @@ export default function TermsPage() {
         <h2 className="legal-page__heading">1. Definitions</h2>
         <ul className="legal-page__list">
           <li><strong>&quot;Account&quot;</strong> means the user profile created to access authenticated features of the Service.</li>
-          <li><strong>&quot;Code&quot;</strong> means an SMS or voice verification code received through a number provisioned by the Service.</li>
+          <li><strong>&quot;Code&quot;</strong> means an SMS verification code received through a number provisioned by the Service.</li>
           <li><strong>&quot;Content&quot;</strong> means text, data, messages, communications, feedback, and other materials submitted to or generated through the Service.</li>
-          <li><strong>&quot;Order&quot;</strong> means a request for a one-time verification, voice verification, rental number, or related paid feature.</li>
-          <li><strong>&quot;Provider&quot;</strong> means a third-party company that supplies phone numbers, messaging, voice, hosting, authentication, analytics, payment, or other infrastructure used by Verifio.</li>
+          <li><strong>&quot;Order&quot;</strong> means a request for one-time verification, proxy access, a rental number, or another related paid feature.</li>
+          <li><strong>&quot;Provider&quot;</strong> means a third-party company that supplies phone numbers, messaging, proxy, hosting, authentication, analytics, payment, or other infrastructure used by Verifio.</li>
           <li><strong>&quot;Rental&quot;</strong> means a temporary assignment of a phone number for the plan and period displayed at checkout.</li>
           <li><strong>&quot;You&quot;</strong> or <strong>&quot;User&quot;</strong> means the person or legal entity accessing or using the Service.</li>
         </ul>
@@ -56,9 +56,9 @@ export default function TermsPage() {
         <p className="legal-page__text">
           A one-time SMS Order provides a number for a limited verification window. The number may be unavailable, rejected by the target platform, delayed, or unable to receive a message. A number is not guaranteed to work with a particular platform, account, region, or use case. Once an Order expires or is completed, the number may be released and you must not expect continued access to it.
         </p>
-        <h3 className="legal-page__subheading">4.2 Voice verification</h3>
+        <h3 className="legal-page__subheading">4.2 Residential proxy access</h3>
         <p className="legal-page__text">
-          Voice verification depends on telephone carrier routing, provider availability, language, call quality, and the target platform. Calls may be delayed, blocked, incomplete, or unintelligible. You are responsible for being able to receive the call and for entering the Code accurately before the Order expires.
+          A proxy package provides access to the bandwidth, connection details, and period shown at purchase. Proxy performance, location, availability, routing, target-site acceptance, and throughput depend on the Provider and the destinations you access. You are responsible for securing the credentials, using the connection lawfully, and stopping use when the package expires or is cancelled.
         </p>
         <h3 className="legal-page__subheading">4.3 Rental numbers</h3>
         <p className="legal-page__text">

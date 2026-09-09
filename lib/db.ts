@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { getDb } from './neon';
 import { formatPhoneNumber } from './smspool';
-import type { RentalNumber, User, VerificationOrder } from './types';
+import type { ProxyOrder, RentalNumber, User, VerificationOrder } from './types';
 
 type StoredUser = {
   id: string;
@@ -36,6 +36,23 @@ type StoredRental = Omit<RentalNumber, 'cost' | 'startedAt' | 'expiresAt' | 'ren
   startedAt: Date | string;
   expiresAt: Date | string;
   renewedAt: Date | string | null;
+};
+
+type StoredProxyOrder = Omit<ProxyOrder, 'cost' | 'createdAt' | 'expiresAt'> & {
+  costCents: string | number;
+  createdAt: Date | string;
+  expiresAt: Date | string | null;
+};
+
+type StoredProxyExtension = {
+  id: string;
+  proxyOrderId: string;
+  userId: string;
+  providerIdentifier: string;
+  costCents: string | number;
+  status: 'pending' | 'completed' | 'failed';
+  previousExpiresAt: Date | string | null;
+  newExpiresAt: Date | string | null;
 };
 
 function centsToAmount(cents: string | number): number {
@@ -97,6 +114,21 @@ function toRental(rental: StoredRental): RentalNumber {
     startedAt: toISOString(rental.startedAt),
     expiresAt: toISOString(rental.expiresAt),
     renewedAt: rental.renewedAt ? toISOString(rental.renewedAt) : null,
+  };
+}
+
+function toProxyOrder(order: StoredProxyOrder): ProxyOrder {
+  return {
+    id: order.id,
+    userId: order.userId,
+    providerIdentifier: order.providerIdentifier,
+    packageId: order.packageId,
+    packageName: order.packageName,
+    bandwidthGb: Number(order.bandwidthGb),
+    cost: centsToAmount(order.costCents),
+    status: order.status,
+    createdAt: toISOString(order.createdAt),
+    expiresAt: order.expiresAt ? toISOString(order.expiresAt) : null,
   };
 }
 
@@ -415,6 +447,247 @@ export async function updateRental(rentalId: string, updates: Partial<RentalNumb
 
 export function generateRentalId() {
   return `rental_${randomUUID()}`;
+}
+
+export function generateProxyOrderId() {
+  return `proxy_${randomUUID()}`;
+}
+
+export function generateProxyExtensionId() {
+  return `proxy_extension_${randomUUID()}`;
+}
+
+export async function createPendingProxyOrder(input: {
+  id: string;
+  userId: string;
+  packageId: number;
+  packageName: string;
+  bandwidthGb: number;
+  cost: number;
+}): Promise<void> {
+  const sql = getDb();
+  const costCents = amountToCents(input.cost);
+  if (costCents <= 0) throw new Error('Proxy package cost must be greater than zero.');
+  if (!Number.isInteger(input.packageId) || input.packageId <= 0) throw new Error('Proxy package is invalid.');
+  if (!Number.isFinite(input.bandwidthGb) || input.bandwidthGb <= 0) throw new Error('Proxy package bandwidth is invalid.');
+
+  await sql.begin(async (transaction) => {
+    const [user] = await transaction<{ balanceCents: string | number }[]>`
+      UPDATE users
+      SET balance_cents = balance_cents - ${costCents}, updated_at = NOW()
+      WHERE id = ${input.userId} AND balance_cents >= ${costCents}
+      RETURNING balance_cents AS "balanceCents"
+    `;
+    if (!user) throw new Error('Insufficient balance. Please add funds to your wallet.');
+
+    await transaction`
+      INSERT INTO proxy_orders (id, user_id, package_id, package_name, bandwidth_gb, cost_cents, status)
+      VALUES (${input.id}, ${input.userId}, ${input.packageId}, ${input.packageName}, ${input.bandwidthGb}, ${costCents}, 'pending')
+    `;
+
+    await transaction`
+      INSERT INTO wallet_transactions (id, user_id, amount_cents, balance_after_cents, kind, reference_id, description)
+      VALUES (${randomUUID()}, ${input.userId}, ${-costCents}, ${user.balanceCents}, 'proxy_debit', ${input.id}, 'Proxy package charge')
+    `;
+  });
+}
+
+export async function finalizeProxyOrder(input: {
+  id: string;
+  userId: string;
+  providerIdentifier: string;
+  expiresAt: string | null;
+}): Promise<ProxyOrder | undefined> {
+  const [order] = await getDb()<StoredProxyOrder[]>`
+    UPDATE proxy_orders
+    SET provider_identifier = ${input.providerIdentifier}, status = 'active', expires_at = ${input.expiresAt ? new Date(input.expiresAt) : null}, updated_at = NOW()
+    WHERE id = ${input.id} AND user_id = ${input.userId} AND status = 'pending'
+    RETURNING id, user_id AS "userId", provider_identifier AS "providerIdentifier", package_id AS "packageId",
+      package_name AS "packageName", bandwidth_gb AS "bandwidthGb", cost_cents AS "costCents", status,
+      created_at AS "createdAt", expires_at AS "expiresAt"
+  `;
+  return order ? toProxyOrder(order) : undefined;
+}
+
+export async function failProxyOrderAndRefund(id: string, userId: string): Promise<boolean> {
+  const sql = getDb();
+  return sql.begin(async (transaction) => {
+    const [order] = await transaction<{ userId: string; costCents: string | number }[]>`
+      SELECT user_id AS "userId", cost_cents AS "costCents"
+      FROM proxy_orders
+      WHERE id = ${id} AND status = 'pending'
+    `;
+    if (!order || order.userId !== userId) return false;
+
+    const [updated] = await transaction<{ id: string }[]>`
+      UPDATE proxy_orders
+      SET status = 'failed', updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${userId} AND status = 'pending'
+      RETURNING id
+    `;
+    if (!updated) return false;
+
+    const [user] = await transaction<{ balanceCents: string | number }[]>`
+      UPDATE users
+      SET balance_cents = balance_cents + ${order.costCents}, updated_at = NOW()
+      WHERE id = ${userId}
+      RETURNING balance_cents AS "balanceCents"
+    `;
+    if (!user) throw new Error('USER_NOT_FOUND');
+
+    await transaction`
+      INSERT INTO wallet_transactions (id, user_id, amount_cents, balance_after_cents, kind, reference_id, description)
+      VALUES (${randomUUID()}, ${userId}, ${order.costCents}, ${user.balanceCents}, 'proxy_refund', ${id}, 'Proxy package refund')
+    `;
+    return true;
+  });
+}
+
+export async function getUserProxyOrder(userId: string, orderId: string): Promise<ProxyOrder | undefined> {
+  const [order] = await getDb()<StoredProxyOrder[]>`
+    SELECT id, user_id AS "userId", provider_identifier AS "providerIdentifier", package_id AS "packageId",
+      package_name AS "packageName", bandwidth_gb AS "bandwidthGb", cost_cents AS "costCents", status,
+      created_at AS "createdAt", expires_at AS "expiresAt"
+    FROM proxy_orders
+    WHERE id = ${orderId} AND user_id = ${userId}
+  `;
+  return order ? toProxyOrder(order) : undefined;
+}
+
+export async function createPendingProxyExtension(input: {
+  id: string;
+  proxyOrderId: string;
+  userId: string;
+  providerIdentifier: string;
+  cost: number;
+  previousExpiresAt: string | null;
+}): Promise<void> {
+  const sql = getDb();
+  const costCents = amountToCents(input.cost);
+  if (costCents <= 0) throw new Error('Proxy extension cost must be greater than zero.');
+  if (!input.providerIdentifier.trim()) throw new Error('Proxy identifier is required.');
+
+  await sql.begin(async (transaction) => {
+    const [order] = await transaction<StoredProxyOrder[]>`
+      SELECT id, user_id AS "userId", provider_identifier AS "providerIdentifier", package_id AS "packageId",
+        package_name AS "packageName", bandwidth_gb AS "bandwidthGb", cost_cents AS "costCents", status,
+        created_at AS "createdAt", expires_at AS "expiresAt"
+      FROM proxy_orders
+      WHERE id = ${input.proxyOrderId}
+        AND user_id = ${input.userId}
+        AND provider_identifier = ${input.providerIdentifier}
+        AND status = 'active'
+        AND (expires_at IS NULL OR expires_at > NOW())
+      FOR UPDATE
+    `;
+    if (!order) throw new Error('That proxy is no longer available for extension.');
+
+    const [user] = await transaction<{ balanceCents: string | number }[]>`
+      UPDATE users
+      SET balance_cents = balance_cents - ${costCents}, updated_at = NOW()
+      WHERE id = ${input.userId} AND balance_cents >= ${costCents}
+      RETURNING balance_cents AS "balanceCents"
+    `;
+    if (!user) throw new Error('Insufficient balance. Please add funds to your wallet.');
+
+    await transaction`
+      INSERT INTO proxy_extensions (
+        id, proxy_order_id, user_id, provider_identifier, cost_cents, previous_expires_at
+      )
+      VALUES (
+        ${input.id}, ${input.proxyOrderId}, ${input.userId}, ${input.providerIdentifier},
+        ${costCents}, ${input.previousExpiresAt ? new Date(input.previousExpiresAt) : null}
+      )
+    `;
+
+    await transaction`
+      INSERT INTO wallet_transactions (id, user_id, amount_cents, balance_after_cents, kind, reference_id, description)
+      VALUES (${randomUUID()}, ${input.userId}, ${-costCents}, ${user.balanceCents}, 'proxy_extension_debit', ${input.id}, 'Proxy extension charge')
+    `;
+  });
+}
+
+export async function finalizeProxyExtension(input: {
+  id: string;
+  userId: string;
+  newExpiresAt: string;
+}): Promise<ProxyOrder | undefined> {
+  return getDb().begin(async (transaction) => {
+    const [extension] = await transaction<StoredProxyExtension[]>`
+      SELECT id, proxy_order_id AS "proxyOrderId", user_id AS "userId", provider_identifier AS "providerIdentifier",
+        cost_cents AS "costCents", status, previous_expires_at AS "previousExpiresAt", new_expires_at AS "newExpiresAt"
+      FROM proxy_extensions
+      WHERE id = ${input.id} AND user_id = ${input.userId} AND status = 'pending'
+      FOR UPDATE
+    `;
+    if (!extension) return undefined;
+
+    const [order] = await transaction<StoredProxyOrder[]>`
+      UPDATE proxy_orders
+      SET expires_at = ${new Date(input.newExpiresAt)}, updated_at = NOW()
+      WHERE id = ${extension.proxyOrderId}
+        AND user_id = ${input.userId}
+        AND provider_identifier = ${extension.providerIdentifier}
+        AND status = 'active'
+      RETURNING id, user_id AS "userId", provider_identifier AS "providerIdentifier", package_id AS "packageId",
+        package_name AS "packageName", bandwidth_gb AS "bandwidthGb", cost_cents AS "costCents", status,
+        created_at AS "createdAt", expires_at AS "expiresAt"
+    `;
+    if (!order) throw new Error('The local proxy record could not be updated.');
+
+    await transaction`
+      UPDATE proxy_extensions
+      SET status = 'completed', new_expires_at = ${new Date(input.newExpiresAt)}, updated_at = NOW()
+      WHERE id = ${input.id} AND user_id = ${input.userId} AND status = 'pending'
+    `;
+    return toProxyOrder(order);
+  });
+}
+
+export async function failProxyExtensionAndRefund(id: string, userId: string): Promise<boolean> {
+  const sql = getDb();
+  return sql.begin(async (transaction) => {
+    const [extension] = await transaction<StoredProxyExtension[]>`
+      SELECT id, proxy_order_id AS "proxyOrderId", user_id AS "userId", provider_identifier AS "providerIdentifier",
+        cost_cents AS "costCents", status, previous_expires_at AS "previousExpiresAt", new_expires_at AS "newExpiresAt"
+      FROM proxy_extensions
+      WHERE id = ${id} AND user_id = ${userId} AND status = 'pending'
+      FOR UPDATE
+    `;
+    if (!extension) return false;
+
+    await transaction`
+      UPDATE proxy_extensions
+      SET status = 'failed', updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${userId} AND status = 'pending'
+    `;
+
+    const [user] = await transaction<{ balanceCents: string | number }[]>`
+      UPDATE users
+      SET balance_cents = balance_cents + ${extension.costCents}, updated_at = NOW()
+      WHERE id = ${userId}
+      RETURNING balance_cents AS "balanceCents"
+    `;
+    if (!user) throw new Error('USER_NOT_FOUND');
+
+    await transaction`
+      INSERT INTO wallet_transactions (id, user_id, amount_cents, balance_after_cents, kind, reference_id, description)
+      VALUES (${randomUUID()}, ${userId}, ${extension.costCents}, ${user.balanceCents}, 'proxy_extension_refund', ${id}, 'Proxy extension refund')
+    `;
+    return true;
+  });
+}
+
+export async function getUserProxyOrders(userId: string): Promise<ProxyOrder[]> {
+  const orders = await getDb()<StoredProxyOrder[]>`
+    SELECT id, user_id AS "userId", provider_identifier AS "providerIdentifier", package_id AS "packageId",
+      package_name AS "packageName", bandwidth_gb AS "bandwidthGb", cost_cents AS "costCents", status,
+      created_at AS "createdAt", expires_at AS "expiresAt"
+    FROM proxy_orders
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  return orders.map(toProxyOrder);
 }
 
 export async function createPendingPayment(payment: Omit<StoredPayment, 'id' | 'createdAt' | 'completedAt' | 'amountCents'> & { amount: number }) {

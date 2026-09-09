@@ -1,26 +1,80 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, ClipboardIcon, ArrowLeftIcon } from '@/components/Icons';
+import { ArrowLeftIcon, CheckCircleIcon, ClipboardIcon, ClockIcon, SpinnerIcon } from '@/components/Icons';
 import type { VerificationOrder } from '@/lib/types';
 import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES } from '@/lib/types';
+
+interface CountryMeta {
+  name: string;
+  code?: string;
+}
+
+type FilterKey = 'all' | 'completed' | 'waiting_for_code' | 'expired' | 'cancelled' | 'sms' | 'smspool' | 'textverified';
+
+const filters: Array<{ key: FilterKey; label: string }> = [
+  { key: 'all', label: 'All orders' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'waiting_for_code', label: 'Waiting' },
+  { key: 'expired', label: 'Expired' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'sms', label: 'SMS' },
+  { key: 'smspool', label: 'SMSPool' },
+  { key: 'textverified', label: 'Text Verified' },
+];
+
+function formatTime(ms: number): string {
+  if (ms <= 0) return '00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatStatus(status: VerificationOrder['status']): string {
+  return status.replace(/_/g, ' ');
+}
+
+function getStatusDescription(status: VerificationOrder['status']): string {
+  switch (status) {
+    case 'completed':
+      return 'Verification completed';
+    case 'waiting_for_code':
+      return 'Waiting for incoming code';
+    case 'expired':
+      return 'The verification window expired';
+    case 'cancelled':
+      return 'Order cancelled and refunded';
+    case 'refunded':
+      return 'Order refunded';
+    default:
+      return 'Order is being processed';
+  }
+}
 
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<VerificationOrder[]>([]);
   const [servicesMap, setServicesMap] = useState<Record<string, string>>({});
-  const [countriesMap, setCountriesMap] = useState<Record<string, string>>({});
+  const [countriesMap, setCountriesMap] = useState<Record<string, CountryMeta>>({});
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>('all');
+  const [filter, setFilter] = useState<FilterKey>('all');
   const [now, setNow] = useState(() => Date.now());
-
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
-  const handleCopyNumber = (id: string, num: string) => {
-    navigator.clipboard.writeText(num);
+  const handleCopyNumber = (id: string, number: string) => {
+    navigator.clipboard.writeText(number);
     setCopiedOrderId(id);
     setTimeout(() => setCopiedOrderId(null), 2000);
   };
@@ -32,7 +86,6 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    // Timer interval for updating countdowns
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -42,7 +95,7 @@ export default function OrdersPage() {
       try {
         const [ordersRes, servicesRes] = await Promise.all([
           fetch('/api/orders'),
-          fetch('/api/services')
+          fetch('/api/services'),
         ]);
 
         if (ordersRes.ok) {
@@ -54,190 +107,234 @@ export default function OrdersPage() {
 
         if (servicesRes.ok) {
           const { services, countries } = await servicesRes.json();
-          const sMap: Record<string, string> = {};
-          const cMap: Record<string, string> = {};
-          
-          services?.forEach((s: { ID: number | string; name: string }) => { sMap[String(s.ID)] = s.name; });
-          countries?.forEach((c: { ID: number | string; name: string }) => { cMap[String(c.ID)] = c.name; });
-          
-          setServicesMap(sMap);
-          setCountriesMap(cMap);
+          const serviceNames: Record<string, string> = {};
+          const countryDetails: Record<string, CountryMeta> = {};
+
+          services?.forEach((service: { ID: number | string; name: string }) => {
+            serviceNames[String(service.ID)] = service.name;
+          });
+          countries?.forEach((country: { ID: number | string; name: string; short_name?: string }) => {
+            countryDetails[String(country.ID)] = {
+              name: country.name,
+              code: country.short_name,
+            };
+          });
+
+          setServicesMap(serviceNames);
+          setCountriesMap(countryDetails);
         }
-      } catch { /* keep existing */ }
-      finally { setLoading(false); }
+      } catch {
+        // The page keeps its existing data if a refresh is interrupted.
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchOrdersAndLists();
   }, [router]);
 
-  const filteredOrders = filter === 'all' ? orders : orders.filter((o) => o.status === filter || o.type === filter);
+  const filteredOrders = filter === 'all'
+    ? orders
+    : orders.filter((order) => order.status === filter || order.type === filter || order.provider === filter);
 
-  const getStatusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      completed: 'badge--completed',
-      waiting_for_code: 'badge--waiting',
-      pending: 'badge--pending',
-      expired: 'badge--expired',
-      cancelled: 'badge--cancelled',
-    };
-    return map[status] || 'badge--pending';
-  };
+  const completedCount = orders.filter((order) => order.status === 'completed').length;
+  const waitingCount = orders.filter((order) => order.status === 'waiting_for_code').length;
+  const totalSpend = orders.reduce((sum, order) => sum + order.cost, 0);
 
-  const getServiceName = (id: string) => {
-    return servicesMap[id] || SUPPORTED_SERVICES.find(s => s.id === id)?.name || id;
-  };
+  const getServiceName = (id: string) => (
+    servicesMap[id] || SUPPORTED_SERVICES.find((service) => service.id === id)?.name || id
+  );
 
-  const getCountryName = (id: string) => {
-    return countriesMap[id] || SUPPORTED_COUNTRIES.find(c => c.code === id)?.name || id;
-  };
-
-  const formatTime = (ms: number) => {
-    if (ms <= 0) return '00:00';
-    const totalSeconds = Math.floor(ms / 1000);
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const getCountry = (id: string): CountryMeta => {
+    if (countriesMap[id]) return countriesMap[id];
+    const fallback = SUPPORTED_COUNTRIES.find((country) => country.code === id);
+    return fallback ? { name: fallback.name, code: fallback.code } : { name: id };
   };
 
   if (loading) {
     return (
-      <div className="auth-page">
-        <SpinnerIcon className="spinner--lg spinner--indigo" />
+      <div className="orders-page orders-page--loading page-container" aria-live="polite">
+        <div className="orders-loading-card">
+          <SpinnerIcon className="spinner--lg spinner--indigo" />
+          <span>Loading your order history</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="sub-page page-container">
-      {/* Breadcrumb */}
-      <div className="breadcrumb">
-        <Link href="/dashboard" className="breadcrumb__link">
-          <ArrowLeftIcon className="icon-md" /> Back to Dashboard
+    <div className="orders-page page-container">
+      <div className="orders-page__back-row">
+        <Link href="/dashboard" className="orders-back-link">
+          <ArrowLeftIcon className="icon-sm" />
+          <span>Back to Dashboard</span>
         </Link>
+        <span className="orders-page__log-label">VERIFICATION LOG</span>
       </div>
 
-      <div className="sub-page-header">
+      <header className="orders-page__header">
         <div>
-          <h1 className="sub-page-header__title">Order History</h1>
-          <p className="sub-page-header__subtitle">View all your verification orders and their codes.</p>
+          <p className="orders-page__eyebrow">Your activity, in one place</p>
+          <h1 className="orders-page__title">Order history</h1>
+          <p className="orders-page__subtitle">
+            Review every verification number, status, and code from your account.
+          </p>
         </div>
-      </div>
+        <Link href="/dashboard" className="orders-page__new-link">
+          Start a verification <span aria-hidden="true">↗</span>
+        </Link>
+      </header>
 
-      {/* Filters */}
-      <div className="filters">
-        {[
-          { key: 'all', label: 'All' },
-          { key: 'completed', label: 'Completed' },
-          { key: 'waiting_for_code', label: 'Waiting' },
-          { key: 'expired', label: 'Expired' },
-          { key: 'cancelled', label: 'Cancelled' },
-          { key: 'sms', label: 'SMS' },
-          { key: 'voice', label: 'Voice' },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`filter-btn ${filter === f.key ? 'filter-btn--active' : ''}`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <section className="orders-summary" aria-label="Order summary">
+        <div className="orders-summary__item">
+          <span className="orders-summary__label">Total orders</span>
+          <strong className="orders-summary__value">{orders.length}</strong>
+        </div>
+        <div className="orders-summary__item">
+          <span className="orders-summary__label">Completed</span>
+          <strong className="orders-summary__value orders-summary__value--green">{completedCount}</strong>
+        </div>
+        <div className="orders-summary__item">
+          <span className="orders-summary__label">Still active</span>
+          <strong className="orders-summary__value orders-summary__value--coral">{waitingCount}</strong>
+        </div>
+        <div className="orders-summary__item">
+          <span className="orders-summary__label">Total spent</span>
+          <strong className="orders-summary__value">${totalSpend.toFixed(2)}</strong>
+        </div>
+      </section>
 
-      {/* Orders list */}
-      {filteredOrders.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state__icon-wrapper">
-            <ClipboardIcon className="icon-2xl empty-state__icon" />
+      <section className="orders-filter-panel" aria-label="Filter orders">
+        <div className="orders-filter-panel__heading">
+          <div>
+            <p className="orders-section-label">Browse records</p>
+            <p className="orders-filter-panel__count">
+              Showing <strong>{filteredOrders.length}</strong> of {orders.length} orders
+            </p>
           </div>
-          <h3 className="empty-state__title">No orders found</h3>
-          <p className="empty-state__desc">
-            {orders.length === 0 ? 'Start by creating your first verification order from the dashboard.' : 'No orders match the selected filter.'}
+          <span className="orders-filter-panel__hint">Filter by status or provider</span>
+        </div>
+        <div className="orders-filters" role="group" aria-label="Order filters">
+          {filters.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setFilter(item.key)}
+              className={`orders-filter ${filter === item.key ? 'orders-filter--active' : ''}`}
+              aria-pressed={filter === item.key}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {filteredOrders.length === 0 ? (
+        <section className="orders-empty-state">
+          <div className="orders-empty-state__icon">
+            <ClipboardIcon className="icon-lg" />
+          </div>
+          <p className="orders-section-label">Nothing here yet</p>
+          <h2>{orders.length === 0 ? 'Your history is ready for its first order.' : 'No orders match this filter.'}</h2>
+          <p>
+            {orders.length === 0
+              ? 'Create a verification from the dashboard and it will appear here automatically.'
+              : 'Try another status or provider to see more of your activity.'}
           </p>
           {orders.length === 0 && (
-            <Link href="/dashboard" className="empty-state__cta">Go to Dashboard</Link>
+            <Link href="/dashboard" className="orders-empty-state__link">Go to dashboard</Link>
           )}
-        </div>
+        </section>
       ) : (
-        <div className="card-list">
+        <section className="orders-list" aria-label="Orders">
           {filteredOrders.map((order) => {
             const timeLeft = new Date(order.expiresAt).getTime() - now;
+            const country = getCountry(order.country);
             const isWaiting = order.status === 'waiting_for_code';
+            const statusClass = `orders-card--${order.status.replace(/_/g, '-')}`;
 
             return (
-              <div key={order.id} className="list-card">
-                <div className="list-card__header">
-                  <div>
-                    <div className="list-card__service">{getServiceName(order.service)}</div>
-                    <div className="list-card__country">{getCountryName(order.country)}</div>
+              <article key={order.id} className={`orders-card ${statusClass}`}>
+                <div className="orders-card__header">
+                  <div className="orders-card__identity">
+                    <div className="orders-card__channel" aria-hidden="true">SMS</div>
+                    <div>
+                      <h2 className="orders-card__service">{getServiceName(order.service)}</h2>
+                      <p className="orders-card__country">
+                        {country.code ? (
+                          <span className={`fi fi-${country.code.toLowerCase()} orders-card__flag`} aria-hidden="true" />
+                        ) : (
+                          <span className="orders-card__country-mark" aria-hidden="true" />
+                        )}
+                        {country.name}
+                      </p>
+                    </div>
                   </div>
-                  <div className="list-card__badges">
-                    <span className={`badge ${getStatusBadge(order.status)}`}>
-                      {order.status.replace(/_/g, ' ')}
+                  <div className="orders-card__badges">
+                    <span className={`orders-status orders-status--${order.status.replace(/_/g, '-')}`}>
+                      <span className="orders-status__dot" aria-hidden="true" />
+                      {formatStatus(order.status)}
                     </span>
-                    <span className="badge badge--type">{order.type}</span>
+                    <span className="orders-type">{order.provider === 'textverified' ? 'Text Verified' : 'SMSPool'}</span>
                   </div>
                 </div>
 
-                <div className="card-details card-details--4col">
-                  <div>
-                    <div className="card-detail__label">Phone Number</div>
-                    <div className="card-detail__phone-row">
+                <div className="orders-card__details">
+                  <div className="orders-card__detail orders-card__detail--phone">
+                    <span className="orders-card__detail-label">Phone number</span>
+                    <div className="orders-card__phone-row">
                       <span>{order.phoneNumber}</span>
                       <button
+                        type="button"
                         onClick={() => handleCopyNumber(order.id, order.phoneNumber)}
-                        className="copy-btn"
-                        title="Copy Phone Number"
+                        className="orders-copy-button"
+                        aria-label="Copy phone number"
                       >
-                        {copiedOrderId === order.id ? (
-                          <span className="copy-btn__label">Copied!</span>
-                        ) : (
-                          <ClipboardIcon className="icon-sm" />
-                        )}
+                        {copiedOrderId === order.id ? 'Copied' : <ClipboardIcon className="icon-sm" />}
                       </button>
                     </div>
                   </div>
-                  <div>
-                    <div className="card-detail__label">Cost</div>
-                    <div className="card-detail__value">${order.cost.toFixed(2)}</div>
+                  <div className="orders-card__detail">
+                    <span className="orders-card__detail-label">Cost</span>
+                    <strong>${order.cost.toFixed(2)}</strong>
                   </div>
-                  <div>
-                    <div className="card-detail__label">Date</div>
-                    <div className="card-detail__value">{new Date(order.createdAt).toLocaleDateString()}</div>
+                  <div className="orders-card__detail">
+                    <span className="orders-card__detail-label">Placed</span>
+                    <strong>{formatDate(order.createdAt)}</strong>
                   </div>
-                  <div>
-                    <div className="card-detail__label">Timer</div>
-                    <div className="card-detail__value">
-                      {isWaiting ? (
-                        <span className="order-countdown">{formatTime(timeLeft)}</span>
-                      ) : (
-                        '-'
-                      )}
-                    </div>
+                  <div className="orders-card__detail">
+                    <span className="orders-card__detail-label">Time remaining</span>
+                    <strong className={isWaiting ? 'orders-card__timer' : ''}>
+                      {isWaiting ? formatTime(timeLeft) : '—'}
+                    </strong>
                   </div>
                 </div>
 
-                {/* Verification code display */}
-                {order.status === 'completed' && order.code && (
-                  <div className="card-code-section">
-                    <div>
-                      <div className="card-code-section__label">Verification Code</div>
-                      <div className="card-code-section__value">{order.code}</div>
-                      {order.completedAt && (
-                        <div className="card-code-section__completed">Completed {new Date(order.completedAt).toLocaleString()}</div>
-                      )}
+                {order.status === 'completed' && order.code ? (
+                  <div className="orders-code-result">
+                    <div className="orders-code-result__copy">
+                      <span className="orders-card__detail-label">Verification code</span>
+                      <strong>{order.code}</strong>
+                      {order.completedAt && <small>Completed {new Date(order.completedAt).toLocaleString()}</small>}
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleCopyCode(order.id, order.code)}
-                      className="card-code-section__copy-btn"
+                      className="orders-code-result__button"
                     >
-                      {copiedCodeId === order.id ? 'Copied!' : 'Copy Code'}
+                      {copiedCodeId === order.id ? 'Copied' : 'Copy code'}
                     </button>
                   </div>
+                ) : (
+                  <div className="orders-card__status-line">
+                    {isWaiting ? <ClockIcon className="icon-sm" /> : <CheckCircleIcon className="icon-sm" />}
+                    <span>{getStatusDescription(order.status)}</span>
+                  </div>
                 )}
-              </div>
+              </article>
             );
           })}
-        </div>
+        </section>
       )}
     </div>
   );

@@ -5,6 +5,14 @@ import { useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
+function getClerkErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('errors' in error)) return null;
+  const errors = (error as { errors?: unknown }).errors;
+  if (!Array.isArray(errors) || !errors[0] || typeof errors[0] !== 'object') return null;
+  const code = (errors[0] as { code?: unknown }).code;
+  return typeof code === 'string' ? code : null;
+}
+
 export function AuthSignInForm() {
   const router = useRouter();
   const clerk = useClerk();
@@ -19,13 +27,17 @@ export function AuthSignInForm() {
     event.preventDefault();
     setErrorMessage('');
 
+    const formData = new FormData(event.currentTarget);
+    const submittedIdentifier = String(formData.get('identifier') ?? '');
+    const submittedPassword = String(formData.get('password') ?? '');
+
     if (!isLoaded || !signIn) {
       setErrorMessage('Sign-in is still loading. Please try again in a moment.');
       return;
     }
 
-    const normalizedIdentifier = identifier.trim();
-    if (!normalizedIdentifier || !password) {
+    const normalizedIdentifier = submittedIdentifier.trim();
+    if (!normalizedIdentifier || !submittedPassword) {
       setErrorMessage('Enter your username or email and password to continue.');
       return;
     }
@@ -35,7 +47,7 @@ export function AuthSignInForm() {
       const result = await signIn.create({
         strategy: 'password',
         identifier: normalizedIdentifier,
-        password,
+        password: submittedPassword,
       });
 
       if (result.status !== 'complete' || !result.createdSessionId) {
@@ -43,9 +55,30 @@ export function AuthSignInForm() {
         return;
       }
 
-      await clerk.setActive({ session: result.createdSessionId });
+      try {
+        await clerk.setActive({ session: result.createdSessionId });
+      } catch {
+        setErrorMessage('Clerk accepted the credentials, but the browser session could not be activated. Refresh and try again.');
+        return;
+      }
+
       router.replace('/dashboard');
-    } catch {
+    } catch (error) {
+      const code = getClerkErrorCode(error);
+      if (code === 'session_exists') {
+        const activeSession = clerk.client?.sessions.find((session) => session.status === 'active');
+        if (activeSession) {
+          try {
+            await clerk.setActive({ session: activeSession.id });
+            router.replace('/dashboard');
+            return;
+          } catch {
+            setErrorMessage('An existing browser session could not be restored. Refresh and try again.');
+            return;
+          }
+        }
+      }
+
       setErrorMessage('Those sign-in details were not accepted. Check them and try again.');
     } finally {
       setIsSubmitting(false);
@@ -54,9 +87,9 @@ export function AuthSignInForm() {
 
   return (
     <form className="auth-form" onSubmit={handleSubmit} noValidate>
-      {errorMessage ? (
-        <p className="auth-error" role="alert">{errorMessage}</p>
-      ) : null}
+      <div className="auth-form__error-slot" aria-live="polite">
+        {errorMessage ? <p className="auth-error" role="alert">{errorMessage}</p> : null}
+      </div>
 
       <div>
         <label className="form-field__label" htmlFor="sign-in-identifier">Username or email</label>

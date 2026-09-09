@@ -1,50 +1,58 @@
-import React from 'react';
-
 export function DashboardSkeleton() {
   return (
-    <div className="dash-layout animate-pulse">
-      {/* Skeleton Header */}
-      <header className="dash-header flex justify-between items-end border-b border-gray-200 dark:border-gray-800 pb-4 mb-6">
-        <div>
-          <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-48 mb-2"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-64"></div>
+    <div className="dash-layout dash-skeleton" role="status" aria-label="Loading dashboard">
+      <header className="dash-header dash-skeleton__header" aria-hidden="true">
+        <div className="dash-skeleton__header-copy">
+          <span className="dash-skeleton__bar dash-skeleton__title" />
+          <span className="dash-skeleton__bar dash-skeleton__subtitle" />
         </div>
-        <div className="dash-header__balance hidden sm:flex">
-          <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded w-32"></div>
-        </div>
+        <span className="dash-skeleton__bar dash-skeleton__balance" />
       </header>
 
-      <div className="dash-grid">
-        {/* Skeleton Left Panel */}
-        <div className="dash-panel border border-gray-200 dark:border-gray-800 p-0 rounded-xl overflow-hidden">
-          <div className="dash-panel__header border-b border-gray-200 dark:border-gray-800 p-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-40"></div>
+      <div className="dash-grid" aria-hidden="true">
+        <section className="dash-panel dash-verification-console dash-skeleton__panel">
+          <div className="dash-panel__header dash-panel__header--console">
+            <span className="dash-skeleton__bar dash-skeleton__panel-title" />
           </div>
-          <div className="dash-panel__content p-4 space-y-6">
-            <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded-lg w-full"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-24"></div>
-              <div className="h-12 bg-gray-200 dark:bg-gray-800 rounded-lg w-full"></div>
-            </div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-24"></div>
-              <div className="h-12 bg-gray-200 dark:bg-gray-800 rounded-lg w-full"></div>
-            </div>
-            <div className="h-16 bg-gray-200 dark:bg-gray-800 rounded-lg w-full mt-6"></div>
-          </div>
-        </div>
+          <div className="dash-panel__content dash-panel__content--console">
+            <span className="dash-skeleton__bar dash-skeleton__section-label" />
+            <span className="dash-skeleton__bar dash-skeleton__segmented" />
 
-        {/* Skeleton Right Panel */}
-        <div className="dash-panel border border-gray-200 dark:border-gray-800 p-0 rounded-xl overflow-hidden">
-          <div className="dash-panel__header border-b border-gray-200 dark:border-gray-800 p-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-40"></div>
+            <div className="dash-skeleton__selectors">
+              <div className="dash-skeleton__field">
+                <span className="dash-skeleton__bar dash-skeleton__field-label" />
+                <span className="dash-skeleton__bar dash-skeleton__field-input" />
+              </div>
+              <div className="dash-skeleton__field">
+                <span className="dash-skeleton__bar dash-skeleton__field-label" />
+                <span className="dash-skeleton__bar dash-skeleton__field-input" />
+              </div>
+            </div>
+
+            <div className="dash-skeleton__submit">
+              <div>
+                <span className="dash-skeleton__bar dash-skeleton__price-label" />
+                <span className="dash-skeleton__bar dash-skeleton__price" />
+              </div>
+              <span className="dash-skeleton__bar dash-skeleton__button" />
+            </div>
           </div>
-          <div className="dash-panel__content flex flex-col items-center justify-center min-h-[300px] p-4">
-             <div className="h-16 w-16 bg-gray-200 dark:bg-gray-800 rounded-full mb-4"></div>
-             <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-48 mb-2"></div>
-             <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-32"></div>
+        </section>
+
+        <section className="dash-panel dash-panel--transparent dash-active-console dash-skeleton__panel">
+          <div className="dash-panel-heading">
+            <span className="dash-skeleton__bar dash-skeleton__panel-title" />
+            <span className="dash-skeleton__bar dash-skeleton__history" />
           </div>
-        </div>
+          <div className="active-orders-column">
+            <div className="dash-skeleton__empty">
+              <span className="dash-skeleton__bar dash-skeleton__empty-icon" />
+              <span className="dash-skeleton__bar dash-skeleton__empty-title" />
+              <span className="dash-skeleton__bar dash-skeleton__empty-copy" />
+              <span className="dash-skeleton__bar dash-skeleton__empty-copy dash-skeleton__empty-copy--short" />
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

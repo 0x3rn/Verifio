@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SpinnerIcon, ShieldIcon } from '@/components/Icons';
+import { SpinnerIcon } from '@/components/Icons';
 import { Toast, useToast } from '@/components/Toast';
 
 export default function ContactPage() {
@@ -44,7 +44,7 @@ export default function ContactPage() {
     <div className="page-container">
       <div className="legal-page">
         <h1 className="legal-page__title">Contact Us</h1>
-        <p className="legal-page__updated">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+        <p className="legal-page__updated">We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.</p>
 
         <div className="contact-form">
           <form onSubmit={handleSubmit}>

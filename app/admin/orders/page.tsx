@@ -23,7 +23,7 @@ export default function AdminOrdersPage() {
         } else {
           setError('Failed to load orders');
         }
-      } catch (err) {
+      } catch {
         setError('An error occurred');
       } finally {
         setLoading(false);
