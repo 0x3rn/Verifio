@@ -44,6 +44,8 @@ function ThemeContextProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
+    const themeColor = theme === 'dark' ? '#0b1120' : '#fcf8f3';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor);
     localStorage.setItem('verifio-theme', theme);
   }, [theme, mounted]);
 

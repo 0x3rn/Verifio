@@ -69,9 +69,13 @@
 * { box-sizing: border-box; padding: 0; margin: 0; }
 
 html {
+  background-color: #fcf8f3;
   scroll-behavior: smooth;
   transition: background-color 0.4s ease, color 0.4s ease;
 }
+
+html.light { background-color: #fcf8f3; }
+html.dark { background-color: #0b1120; }
 
 body {
   background-color: var(--background);
