@@ -4,6 +4,19 @@ import Link from 'next/link';
 import { useSignUp } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
 
+const CLERK_REQUEST_TIMEOUT_MS = 20_000;
+
+function withClerkTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error('CLERK_REQUEST_TIMEOUT')), CLERK_REQUEST_TIMEOUT_MS);
+  });
+
+  return Promise.race([operation, timeout]).finally(() => {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+  });
+}
+
 export function AuthSignUpForm() {
   const { signUp, fetchStatus } = useSignUp();
   const isLoaded = fetchStatus !== 'fetching';
@@ -48,11 +61,11 @@ export function AuthSignUpForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await signUp.password({
+      const result = await withClerkTimeout(signUp.password({
         username: normalizedUsername,
         password,
         ...(normalizedEmail ? { emailAddress: normalizedEmail } : {}),
-      });
+      }));
 
       if (result.error) {
         setErrorMessage('We could not create that account. Try a different username or check the form details.');
@@ -64,9 +77,9 @@ export function AuthSignUpForm() {
         return;
       }
 
-      const finalizeResult = await signUp.finalize({
+      const finalizeResult = await withClerkTimeout(signUp.finalize({
         navigate: async () => undefined,
-      });
+      }));
 
       if (finalizeResult.error) {
         setErrorMessage('Your account was created, but the browser session could not be activated. Refresh and try again.');
@@ -74,8 +87,10 @@ export function AuthSignUpForm() {
       }
 
       window.location.assign('/dashboard');
-    } catch {
-      setErrorMessage('We could not create that account. Try a different username or check the form details.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+        ? 'The authentication service did not respond. Check your connection and try again.'
+        : 'We could not create that account. Try a different username or check the form details.');
     } finally {
       setIsSubmitting(false);
     }
