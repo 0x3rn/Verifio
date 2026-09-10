@@ -1,44 +1,45 @@
 'use client';
 
 import Link from 'next/link';
-import { useClerk, useSignUp } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
-import { withClerkTimeout } from '@/lib/clerk-client';
+import { authClient, withAuthTimeout } from '@/lib/auth-client';
+
+function getAuthErrorMessage(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const candidate = error as { message?: unknown; code?: unknown };
+  if (candidate.code === 'USERNAME_IS_ALREADY_TAKEN') return 'That username is already in use. Choose another one.';
+  if (candidate.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') return 'That email address is already in use. Try signing in instead.';
+  return typeof candidate.message === 'string' ? candidate.message : null;
+}
 
 export function AuthSignUpForm() {
-  const clerk = useClerk();
-  const { signUp, fetchStatus } = useSignUp();
-  const isLoaded = fetchStatus !== 'fetching';
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [emailCode, setEmailCode] = useState('');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage('');
 
-    if (!isLoaded) {
-      setErrorMessage('Registration is still loading. Please try again in a moment.');
-      return;
-    }
-
-    const normalizedUsername = username.trim();
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedUsername || !password) {
-      setErrorMessage('Enter a username and password to continue.');
+    const normalizedUsername = username.trim();
+    if (!normalizedEmail || !normalizedUsername || !password) {
+      setErrorMessage('Enter an email address, username, and password to continue.');
       return;
     }
-    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setErrorMessage('Enter a valid email address or leave the email field blank.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setErrorMessage('Enter a valid email address.');
       return;
     }
     if (normalizedUsername.length < 3) {
       setErrorMessage('Your username must be at least 3 characters.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_.]+$/.test(normalizedUsername)) {
+      setErrorMessage('Usernames can contain letters, numbers, underscores, and periods.');
       return;
     }
     if (password.length < 15) {
@@ -52,135 +53,28 @@ export function AuthSignUpForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await withClerkTimeout(signUp.password({
+      const result = await withAuthTimeout(authClient.signUp.email({
+        email: normalizedEmail,
+        name: normalizedUsername,
         username: normalizedUsername,
+        displayUsername: normalizedUsername,
         password,
-        ...(normalizedEmail ? { emailAddress: normalizedEmail } : {}),
+        callbackURL: '/dashboard',
       }));
 
       if (result.error) {
-        setErrorMessage('We could not create that account. Try a different username or check the form details.');
+        setErrorMessage(getAuthErrorMessage(result.error) || 'We could not create that account. Check your details and try again.');
         return;
       }
 
-      if (signUp.status === 'missing_requirements'
-        && signUp.unverifiedFields.includes('email_address')
-        && signUp.missingFields.length === 0) {
-        const verificationResult = await withClerkTimeout(signUp.verifications.sendEmailCode());
-        if (verificationResult.error) {
-          setErrorMessage('We could not send the verification code. Check your email address and try again.');
-          return;
-        }
-        setIsVerifyingEmail(true);
-        return;
-      }
-
-      if (signUp.status !== 'complete' || !signUp.createdSessionId) {
-        setErrorMessage('Additional verification is required before your account can be activated.');
-        return;
-      }
-
-      await withClerkTimeout(clerk.setActive({
-        session: signUp.createdSessionId,
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) return;
-          window.location.assign(decorateUrl('/dashboard'));
-        },
-      }));
-
+      window.location.assign('/dashboard');
     } catch (error) {
-      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+      setErrorMessage(error instanceof Error && error.message === 'AUTH_REQUEST_TIMEOUT'
         ? 'The authentication service did not respond. Check your connection and try again.'
-        : 'We could not create that account. Try a different username or check the form details.');
+        : 'We could not create that account. Check your details and try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  async function handleVerifyEmail(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setErrorMessage('');
-    const normalizedCode = emailCode.replace(/\s/g, '');
-    if (!/^\d{4,8}$/.test(normalizedCode)) {
-      setErrorMessage('Enter the verification code sent to your email.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const verificationResult = await withClerkTimeout(signUp.verifications.verifyEmailCode({ code: normalizedCode }));
-      if (verificationResult.error) {
-        setErrorMessage('That verification code was not accepted. Check it and try again.');
-        return;
-      }
-
-      if (signUp.status !== 'complete' || !signUp.createdSessionId) {
-        setErrorMessage('Your email was verified, but the account is not ready yet. Please try again.');
-        return;
-      }
-
-      await withClerkTimeout(clerk.setActive({
-        session: signUp.createdSessionId,
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) return;
-          window.location.assign(decorateUrl('/dashboard'));
-        },
-      }));
-
-    } catch (error) {
-      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
-        ? 'The authentication service did not respond. Check your connection and try again.'
-        : 'We could not verify your email. Check the code and try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleResendEmailCode() {
-    setErrorMessage('');
-    setIsSubmitting(true);
-    try {
-      const result = await withClerkTimeout(signUp.verifications.sendEmailCode());
-      setErrorMessage(result.error ? 'We could not send a new code. Please try again.' : 'A new verification code was sent.');
-    } catch (error) {
-      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
-        ? 'The authentication service did not respond. Check your connection and try again.'
-        : 'We could not send a new code. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  if (isVerifyingEmail) {
-    return (
-      <form className="auth-form" onSubmit={handleVerifyEmail} noValidate>
-        <div className="auth-form__error-slot" aria-live="polite">
-          {errorMessage ? <p className="auth-error" role="alert">{errorMessage}</p> : null}
-        </div>
-        <p className="auth-verification-hint">We sent a verification code to your email address.</p>
-        <div>
-          <label className="form-field__label" htmlFor="sign-up-email-code">Verification code</label>
-          <input
-            className="form-field__input"
-            id="sign-up-email-code"
-            name="emailCode"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={emailCode}
-            onChange={(event) => setEmailCode(event.target.value)}
-            disabled={isSubmitting}
-            required
-          />
-        </div>
-        <button className="auth-submit" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Verifying…' : 'Verify email'}
-        </button>
-        <button className="auth-secondary-button" type="button" onClick={handleResendEmailCode} disabled={isSubmitting}>
-          Send a new code
-        </button>
-      </form>
-    );
   }
 
   return (
@@ -190,7 +84,7 @@ export function AuthSignUpForm() {
       </div>
 
       <div>
-        <label className="form-field__label" htmlFor="sign-up-email">Email address <span className="form-field__optional">(optional)</span></label>
+        <label className="form-field__label" htmlFor="sign-up-email">Email address</label>
         <input
           className="form-field__input"
           id="sign-up-email"
@@ -199,7 +93,8 @@ export function AuthSignUpForm() {
           autoComplete="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          disabled={!isLoaded || isSubmitting}
+          disabled={isSubmitting}
+          required
         />
       </div>
 
@@ -213,7 +108,7 @@ export function AuthSignUpForm() {
           autoComplete="username"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          disabled={!isLoaded || isSubmitting}
+          disabled={isSubmitting}
           required
         />
       </div>
@@ -228,7 +123,7 @@ export function AuthSignUpForm() {
           autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          disabled={!isLoaded || isSubmitting}
+          disabled={isSubmitting}
           required
         />
       </div>
@@ -243,16 +138,14 @@ export function AuthSignUpForm() {
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          disabled={!isLoaded || isSubmitting}
+          disabled={isSubmitting}
           required
         />
       </div>
 
-      <button className="auth-submit" type="submit" disabled={!isLoaded || isSubmitting}>
+      <button className="auth-submit" type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Creating account…' : 'Create account'}
       </button>
-
-      <div id="clerk-captcha" />
 
       <p className="auth-footer__text">
         Already have an account? <Link className="auth-footer__link" href="/login">Sign in</Link>

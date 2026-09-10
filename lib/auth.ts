@@ -1,70 +1,125 @@
-import { auth, clerkClient, currentUser, verifyToken } from '@clerk/nextjs/server';
+import { betterAuth } from 'better-auth';
+import { username } from 'better-auth/plugins';
+import { Pool } from 'pg';
 import { headers } from 'next/headers';
-import { getUserById, upsertUser } from '@/lib/db';
+import { upsertUser } from '@/lib/db';
 import type { User } from './types';
 
-function checkIsAdmin(userId: string): boolean {
+type AuthGlobal = typeof globalThis & {
+  __verifioAuthPool?: Pool;
+};
+
+function getAuthPool(): Pool {
+  const globalForAuth = globalThis as AuthGlobal;
+  if (!globalForAuth.__verifioAuthPool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('AUTH_DATABASE_CONFIG_MISSING: Set DATABASE_URL for Better Auth.');
+    }
+    globalForAuth.__verifioAuthPool = new Pool({
+      connectionString,
+      max: 10,
+      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis: 20_000,
+    });
+  }
+  return globalForAuth.__verifioAuthPool;
+}
+
+const applicationUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+const configuredHost = (() => {
+  try {
+    return new URL(applicationUrl).host;
+  } catch {
+    return 'localhost:3001';
+  }
+})();
+
+export const auth = betterAuth({
+  appName: 'Verifio',
+  baseURL: {
+    allowedHosts: [configuredHost, 'verifio.corstack.dev', 'localhost:3000', 'localhost:3001'],
+    fallback: applicationUrl,
+    protocol: 'auto',
+  },
+  secret: process.env.BETTER_AUTH_SECRET,
+  database: getAuthPool(),
+  user: {
+    modelName: 'auth_users',
+  },
+  session: {
+    modelName: 'auth_sessions',
+  },
+  account: {
+    modelName: 'auth_accounts',
+  },
+  verification: {
+    modelName: 'auth_verifications',
+  },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 15,
+    maxPasswordLength: 128,
+    autoSignIn: true,
+  },
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 32,
+    }),
+  ],
+  trustedOrigins: [
+    `http://${configuredHost}`,
+    `https://${configuredHost}`,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://verifio.corstack.dev',
+  ],
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (createdUser) => {
+          const usernameValue = 'username' in createdUser && typeof createdUser.username === 'string'
+            ? createdUser.username
+            : createdUser.name;
+          await upsertUser({
+            id: createdUser.id,
+            username: usernameValue,
+            email: createdUser.email,
+          });
+        },
+      },
+    },
+  },
+});
+
+function isAdmin(userId: string): boolean {
   const adminIds = process.env.ADMIN_USER_IDS?.split(',').map((value) => value.trim()).filter(Boolean) || [];
   return adminIds.includes(userId);
 }
 
-function toPublicUser(user: { id: string; username: string; email: string | null; balanceCents: string | number; createdAt: Date | string; updatedAt: Date | string }): User {
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email || undefined,
-    balance: Number(user.balanceCents) / 100,
-    isAdmin: checkIsAdmin(user.id),
-    createdAt: new Date(user.createdAt).toISOString(),
-    updatedAt: new Date(user.updatedAt).toISOString(),
-  };
-}
-
 export async function getCurrentUser(): Promise<User | null> {
-  const { userId: cookieUserId } = await auth();
-  let userId = cookieUserId;
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) return null;
 
-  // Client-side dashboard requests also send a Clerk bearer token. If the
-  // session cookie has not reached the request yet, verify that token before
-  // falling back to the database profile. This prevents a valid session from
-  // being treated as a logout during the first request after navigation.
-  if (!userId) {
-    const authorization = (await headers()).get('authorization');
-    const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (bearerToken) {
-      try {
-        const verifiedToken = await verifyToken(bearerToken, {
-          secretKey: process.env.CLERK_SECRET_KEY,
-        });
-        if (typeof verifiedToken.sub === 'string') userId = verifiedToken.sub;
-      } catch {
-        return null;
-      }
-    }
-  }
+  const usernameValue = 'username' in session.user && typeof session.user.username === 'string'
+    ? session.user.username
+    : session.user.name;
+  if (!usernameValue) throw new Error('AUTH_USERNAME_REQUIRED');
 
-  if (!userId) return null;
+  const profile = await upsertUser({
+    id: session.user.id,
+    username: usernameValue,
+    email: session.user.email || null,
+  });
 
-  if (!cookieUserId) {
-    const profile = await getUserById(userId);
-    if (profile) return toPublicUser(profile);
-
-    const clerkUser = await (await clerkClient()).users.getUser(userId);
-    if (!clerkUser.username) throw new Error('CLERK_USERNAME_REQUIRED');
-    const email = clerkUser.primaryEmailAddress?.emailAddress ?? null;
-    const createdProfile = await upsertUser({ id: userId, username: clerkUser.username, email });
-    return toPublicUser(createdProfile);
-  }
-
-  // Clerk is the identity source. Neon holds only the profile and application
-  // state (wallet, orders, rentals). This synchronous upsert avoids webhook
-  // delivery races on a user's first request while keeping profile changes fresh.
-  const clerkUser = await currentUser();
-  if (!clerkUser || !clerkUser.username) {
-    throw new Error('CLERK_USERNAME_REQUIRED');
-  }
-
-  const email = clerkUser.primaryEmailAddress?.emailAddress ?? null;
-  const profile = await upsertUser({ id: userId, username: clerkUser.username, email });
-  return toPublicUser(profile);
+  return {
+    id: profile.id,
+    username: profile.username,
+    email: profile.email || undefined,
+    balance: Number(profile.balanceCents) / 100,
+    isAdmin: isAdmin(profile.id),
+    createdAt: new Date(profile.createdAt).toISOString(),
+    updatedAt: new Date(profile.updatedAt).toISOString(),
+  };
 }

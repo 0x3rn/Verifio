@@ -3954,28 +3954,6 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .dash-layout,.sub-page{max-width:76rem;padding-top:3rem;padding-bottom:4rem}.dash-header{padding-bottom:1.5rem;border-bottom:1px solid #e4d8d1}.dash-header__title,.sub-page-header__title{color:#39234e;font-family:Georgia,serif;font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.07em}.dash-header__subtitle,.sub-page-header__subtitle{color:#786a80}.dash-header__balance,.dash-panel,.list-card,.billing-form,.billing-balance__card{border-color:#e0d6d0;border-radius:1.15rem;background:#fffaf4;box-shadow:0 .65rem 1.7rem #51356c0d}.dash-topup-btn,.dash-btn-primary,.dashboard-submit,.contact-form__submit{border-radius:999px;background:#5b3a9d;color:#fffaf4;text-decoration:none}.segmented-control{border-color:#e4d8d1;background:#f4edf9;border-radius:999px}.segmented-control__btn{border-radius:999px}.segmented-control__btn--active{background:#5b3a9d;color:#fffaf4;box-shadow:none}.dash-label,.card-detail__label{color:#986252}.dash-input,.combobox-btn,.combobox-search{border-color:#dfd1e8;background:#fffdf9;color:#39234e;border-radius:.65rem}.combobox-btn--open,.dash-input:focus,.combobox-search:focus{border-color:#ff725b;box-shadow:0 0 0 3px #ff725b22}.combobox-dropdown{border-color:#ded1ec;border-radius:.8rem;box-shadow:0 1rem 2rem #51356c1a}.combobox-item--active,.combobox-item:hover{background:#f1e9fb;color:#5b3a9d}.rental-duration-btn{border-color:#dfd1e8;background:#fffdf9;border-radius:.7rem}.rental-duration-btn--active{border-color:#5b3a9d;background:#f1e9fb;box-shadow:0 0 0 1px #5b3a9d}.dash-active-card{border-color:#e0d6d0;border-radius:1rem;background:#fffaf4;box-shadow:none}.dash-active-card__body{border-color:#e5dce9;background:#f7f1fc}.dash-active-card__badge{background:#ffe3bf;color:#8d4c31}.dash-active-card__timer-wrap{background:#fff0ed;color:#c64d39}.dash-copy-btn{border-color:#d9cce5;background:#fffaf4}.dash-btn-secondary{border-color:#dfd1e8;background:#fffdf9}.dash-btn-danger{border-color:#ffb5aa;color:#c64d39}.active-order-empty{border:1px dashed #cdbde0;border-radius:1rem;background:#fbf7ff}.filters{gap:.45rem}.filter-btn{border-radius:999px}.filter-btn--active{background:#5b3a9d;color:#fffaf4}.progress-bar__fill{background:#ff725b}.billing-balance__card{background:#39234e;color:#fffaf4}.selector-btn--active{border-color:#5b3a9d!important;background:#f1e9fb!important;color:#5b3a9d!important}
 .legal-page{max-width:52rem;margin:3rem auto 5rem;border:1px solid #e5d8cf;border-radius:1.35rem;background:#fffaf4;padding:clamp(1.5rem,5vw,4rem);box-shadow:.8rem .8rem 0 #eadcf8}.legal-page__title{color:#39234e;font-family:Georgia,serif;font-size:clamp(2.6rem,7vw,4.5rem);letter-spacing:-.08em}.legal-page__updated{color:#a44c3b;font:700 .67rem var(--font-geist-mono),monospace;letter-spacing:.08em;text-transform:uppercase}.legal-page__heading{color:#5b3a9d;font-family:Georgia,serif;font-size:1.65rem}.legal-page__subheading{color:#4c355c}.legal-page__text,.legal-page__list{color:#695d70;line-height:1.75}.legal-page a{color:#c64d39!important}.contact-form{border:0;background:transparent;padding:0;box-shadow:none}.contact-form__label{color:#5b3a9d;font:700 .67rem var(--font-geist-mono),monospace;letter-spacing:.08em;text-transform:uppercase}.contact-form__input,.contact-form__textarea{border-color:#ded1ec;background:#fffdf9;color:#39234e}.contact-form__input:focus,.contact-form__textarea:focus{border-color:#ff725b;box-shadow:0 0 0 3px #ff725b22}
 .v-home{background:#fcf8f3;color:#291f40}.v-home h1,.v-home h2,.v-home h3{font-family:Georgia,"Times New Roman",serif;letter-spacing:-.06em}.v-hero{background:#e8defb;color:#2c2050}.v-hero:before{background:radial-gradient(circle at 74% 22%,#ff725b 0 6.4rem,transparent 6.5rem),radial-gradient(circle at 86% 10%,#ffe08c 0 2.3rem,transparent 2.4rem),linear-gradient(135deg,#e8defb 0%,#f6d9d1 100%)}.v-hero:after{content:"";position:absolute;right:-8rem;bottom:-11rem;width:32rem;height:32rem;border:1px solid #5f43a880;border-radius:50%;z-index:-1}.v-hero__grain{opacity:.28;background-image:linear-gradient(90deg,#ffffff70 1px,transparent 1px),linear-gradient(#ffffff70 1px,transparent 1px);background-size:2rem 2rem;mask-image:none}.v-kicker{color:#6845bb;font-family:var(--font-geist-mono),monospace}.v-kicker span{box-shadow:0 0 0 .24rem #6845bb1c}.v-kicker--dark{color:#a44c3b}.v-hero h1{max-width:10ch;font-size:clamp(3.6rem,10vw,7.6rem);line-height:.87}.v-hero h1 em,.v-plans h2 em{color:#d85843}.v-hero__lede{max-width:31rem;color:#4b4068;font-size:1.08rem}.v-button{border-radius:999px;font-family:var(--font-geist-mono),monospace}.v-button--signal{background:#5b3a9d;color:#fff9f4}.v-button--signal:hover{background:#402778}.v-button--quiet{border-color:#5b3a9d;color:#402778}.v-button--quiet:hover{background:#ffffff73}.v-proof{color:#574a71}.v-proof svg{color:#d85843}.v-console{position:relative;border:0;border-radius:1.6rem;background:#fffdf9;color:#332657;box-shadow:1.15rem 1.15rem 0 #ff725b,0 2rem 4rem #4a317530;transform:rotate(2.2deg);overflow:hidden}.v-console:before{content:"YOUR CODE, IN CONTEXT";display:block;padding:.7rem 1rem;background:#5b3a9d;color:#fff9f4;font:700 .62rem var(--font-geist-mono),monospace;letter-spacing:.11em}.v-console__topline{border-color:#5b3a9d22;color:#776d8e}.v-console__body{padding:1.45rem}.v-live{color:#ce5741}.v-live i{box-shadow:0 0 0 .22rem #ce57411c}.v-console__prompt,.v-console__choices span,.v-console__code span{color:#8b7da5}.v-console__choices div,.v-console__code{background:#f4effb;border-color:#5b3a9d1c;border-radius:.6rem}.v-console__choices strong,.v-console__number,.v-console__status strong,.v-console__code b,.v-console__foot strong{color:#332657}.v-console__line{background:#5b3a9d20}.v-console__number span,.v-console__marker{color:#d85843}.v-console__foot{border-color:#5b3a9d22;background:#fff7df}.v-marquee{background:#5b3a9d;color:#fff8ee}.v-section{padding:7rem 0}.v-section--modes{background:#fff7ee}.v-section__intro>p:last-child,.v-coverage-head>p{color:#6d607a}.v-mode-layout{border-color:#dbd0c7}.v-mode-tabs{border-color:#dbd0c7}.v-mode-tabs button{border-color:#e4d9cf;color:#796b86;font-family:var(--font-geist-mono),monospace}.v-mode-tabs button.is-active{color:#d85843}.v-mode-tabs button.is-active b{color:#5b3a9d}.v-mode-card{background:#5b3a9d;color:#fff9f4}.v-mode-card>p{color:#ffcc9b}.v-mode-card__content{color:#e7dff6}.v-mode-card li svg{color:#ffcc9b}.v-text-link{color:#5b3a9d}.v-mode-card .v-text-link{color:#ffcc9b}.v-section--coverage{background:#f2eafc;border-color:#dbd0c7}.v-steps,.v-steps article{background:#fffdf9;border-color:#dbd0c7}.v-steps article>span,.v-coverage-grid p{color:#a44c3b}.v-steps svg{color:#5b3a9d}.v-steps p{color:#6d607a}.v-coverage-grid div{border-color:#dbd0c7}.v-section--plans{background:#ff725b;color:#3a1e37}.v-section--plans .v-kicker{color:#642c57}.v-plan-copy{color:#4f2b47}.v-text-link--light{color:#4a1e40}.v-section--faq{background:#fff7ee}.v-faq-list,.v-faq-list details{border-color:#dbd0c7}.v-faq-list summary{color:#392549}.v-faq-list summary span{color:#d85843}.v-faq-list details p{color:#6d607a}.v-final{background:#ffe08c;color:#3d2947}.v-final .v-button--signal{background:#5b3a9d;color:#fff9f4}.v-home :focus-visible{outline-color:#d85843}@media (min-width:720px){.v-hero__grid{grid-template-columns:1.15fr .85fr;min-height:47rem}.v-console{justify-self:end}.v-mode-tabs{border-color:#dbd0c7}}
-/* Clerk is rendered inside the existing Verifio auth cards. */
-.clerk-auth-shell .cl-rootBox,
-.clerk-auth-shell .cl-cardBox,
-.clerk-auth-shell .cl-card {
-  width: 100%;
-  box-shadow: none;
-}
-
-.clerk-auth-shell .cl-card {
-  background: transparent;
-}
-
-.clerk-auth-shell .cl-headerTitle,
-.clerk-auth-shell .cl-headerSubtitle {
-  display: none;
-}
-
-.clerk-auth-shell .cl-socialButtonsBlockButton,
-.clerk-auth-shell .cl-formButtonPrimary {
-  border-radius: 0.75rem;
-}
-
 /* Approved Verifio connected-signal mark. Image assets supersede the earlier
    CSS-only V placeholders in the shared navigation and footer. */
 .v-nav .navbar__logo::before,
@@ -4025,11 +4003,7 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .v-mode-tabs button,
 .form-field__label,
 .legal-page__updated,
-.contact-form__label,
-.cl-footerActionText,
-.cl-formFieldLabel,
-.cl-formFieldInputShowPasswordButton,
-.cl-identityPreviewText {
+.contact-form__label {
   font-family: var(--font-mono);
 }
 
@@ -4037,8 +4011,7 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .v-kicker,
 .form-field__label,
 .legal-page__updated,
-.contact-form__label,
-.cl-formFieldLabel {
+.contact-form__label {
   letter-spacing: 0.08em;
 }
 
@@ -4087,44 +4060,6 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   background: #f0e8fb;
 }
 
-/* Branded placeholder shown while Clerk mounts its managed auth form. */
-.clerk-auth-loading {
-  display: grid;
-  gap: 1rem;
-  padding: 0.25rem;
-}
-
-.clerk-auth-loading__social,
-.clerk-auth-loading__field,
-.clerk-auth-loading__button,
-.clerk-auth-loading__footer {
-  border-radius: 0.65rem;
-  background: linear-gradient(90deg, #f1e8fb 25%, #fffaf4 50%, #f1e8fb 75%);
-  background-size: 200% 100%;
-  animation: clerk-auth-loading-shimmer 1.4s ease-in-out infinite;
-}
-
-.clerk-auth-loading__social { height: 2.75rem; }
-.clerk-auth-loading__divider { height: 1px; margin: 0.25rem 0; background: #eadff1; }
-.clerk-auth-loading__field { height: 3.1rem; }
-.clerk-auth-loading__field--short { width: 42%; height: 0.75rem; border-radius: 0.35rem; }
-.clerk-auth-loading__button { height: 2.9rem; margin-top: 0.25rem; }
-.clerk-auth-loading__footer { width: 68%; height: 0.75rem; margin: 0.4rem auto 0; border-radius: 0.35rem; }
-
-@keyframes clerk-auth-loading-shimmer {
-  from { background-position: 100% 0; }
-  to { background-position: -100% 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .clerk-auth-loading__social,
-  .clerk-auth-loading__field,
-  .clerk-auth-loading__button,
-  .clerk-auth-loading__footer {
-    animation: none;
-  }
-}
-
 /* Keep the workflow steps visually distinct as individual cards. */
 .v-section--workflow .v-steps {
   gap: 1rem;
@@ -4141,8 +4076,6 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   box-shadow: 0 0.75rem 1.5rem #51356c0d;
 }
 
-/* Keep Clerk's embedded form compact: hiding only its title left the empty
-   header container above the form, which read as an oversized blank panel. */
 .auth-page {
   padding: 2.25rem 0.75rem;
 }
@@ -4201,14 +4134,6 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .auth-form-card--login { min-height: 26rem; }
 .auth-form-card--register { min-height: 32rem; }
 .auth-form__error-slot { min-height: 0; }
-
-.clerk-auth-shell .cl-header {
-  display: none !important;
-}
-
-.clerk-auth-shell .cl-card {
-  min-height: 0 !important;
-}
 
 /* Dashboard surface follows the same paper, lavender,
    plum, and coral language as the landing page. */

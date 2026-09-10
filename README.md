@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>OTP & Phone Verification Platform</strong><br/>
-  SMS verification · Voice verification · Rental phone numbers
+  SMS verification · Residential proxies · Rental phone numbers
 </p>
 
 <p align="center">
@@ -24,14 +24,14 @@
 
 ## Overview
 
-**Verifio** is a full-stack OTP verification platform that provides disposable and rental phone numbers for receiving SMS and voice verification codes. Built on **Next.js 16** with vanilla CSS (no utility frameworks), it integrates with the **SMSpool API** to provision real phone numbers across **100+ countries** for **50+ services** including Google, WhatsApp, Telegram, Facebook, Instagram, Discord, Microsoft, Apple, and more.
+**Verifio** is a full-stack verification platform that provides disposable and rental phone numbers for receiving SMS codes, plus residential proxies. Built on **Next.js 16** with vanilla CSS (no utility frameworks), it integrates with provider APIs to provision real phone numbers across **100+ countries** for **50+ services** including Google, WhatsApp, Telegram, Facebook, Instagram, Discord, Microsoft, Apple, and more.
 
 ### Verification Methods
 
 | Method | Description | Use Case |
 |--------|-------------|----------|
 | **SMS** | Receive OTP codes via text message | One-time account verifications |
-| **Voice** | Automated voice call reads your code aloud | When SMS delivery is unreliable |
+| **Proxy** | Residential proxy access with managed credentials | Network access and privacy workflows |
 | **Rental** | Dedicated number for days/weeks/months | Ongoing verification needs |
 
 ### Rental Plans
@@ -47,7 +47,7 @@
 
 ## Features
 
-- 🔐 **Clerk Authentication** — Username/password accounts with optional email and Google sign-in
+- 🔐 **Better Auth** — Database-backed username/email and password sessions
 - 🎨 **Dark Mode** — System-preference-aware theme with localStorage persistence
 - 📱 **Responsive Design** — Fully responsive across mobile, tablet, and desktop
 - 🔍 **Search & Filter** — Search services/countries, filter orders by status/type
@@ -66,7 +66,7 @@
 | **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript 5 |
 | **Styling** | Vanilla CSS (BEM methodology, CSS custom properties) |
-| **Auth** | Clerk (username/password, optional email, Google OAuth, bot protection) |
+| **Auth** | Better Auth (username/email and password, database-backed sessions) |
 | **API** | SMSpool API for number provisioning |
 | **Database** | Neon PostgreSQL with an auditable wallet ledger |
 | **Deployment** | Vercel |
@@ -84,7 +84,6 @@ verifio/
 │   │   ├── rentals/route.ts        # GET/DELETE — manage rentals
 │   │   └── verify/
 │   │       ├── sms/route.ts        # POST/GET/DELETE — SMS verification
-│   │       └── voice/route.ts      # POST/GET/DELETE — Voice verification
 │   ├── dashboard/
 │   │   ├── page.tsx                # Dashboard home (new verification)
 │   │   ├── orders/page.tsx         # Order history with filters
@@ -100,13 +99,13 @@ verifio/
 │   ├── Footer.tsx                  # Site footer with links
 │   └── Icons.tsx                   # SVG icon library (30+ icons)
 ├── lib/
-│   ├── auth.ts                     # Clerk identity → Neon profile synchronization
+│   ├── auth.ts                     # Better Auth session → Neon profile synchronization
 │   ├── request-security.ts         # Origin validation and rate-limit keys
 │   ├── neon.ts                     # Server-side Neon database client
 │   ├── smspool.ts                  # SMSpool API client
 │   ├── store.ts                    # In-memory data store
 │   └── types.ts                    # TypeScript interfaces & constants
-├── proxy.ts                         # Clerk request context
+├── app/api/auth/[...all]/route.ts   # Better Auth request handler
 ├── vercel.json                     # Vercel deployment configuration
 ├── next.config.ts                  # Next.js configuration
 └── tsconfig.json                   # TypeScript configuration
@@ -145,19 +144,15 @@ Create `.env.local` with the following:
 DATABASE_URL=your-neon-pooled-url
 DIRECT_URL=your-neon-direct-url
 
-# Clerk (configure username + password, optional email, and Google in Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
-CLERK_SECRET_KEY=your-clerk-secret-key
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/register
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
+# Better Auth
+BETTER_AUTH_SECRET=generate-a-long-random-secret
+BETTER_AUTH_URL=http://localhost:3001
 
 # SMSpool API key
 SMSPOOL_API_KEY=your-smspool-api-key
 
 # Application URL
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3001
 ```
 
 ### Development
@@ -166,14 +161,20 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3001](http://localhost:3001) in your browser.
 
 Before the first run, apply and verify the Neon schema:
 
 ```bash
 npm run db:migrate
 npm run db:check
+npm run auth:check
+npm run auth:test
 ```
+
+Authentication is now owned by Better Auth. Existing accounts from the former
+provider are not password-migrated; create new Better Auth accounts or perform
+a deliberate account-recovery migration before production launch.
 
 ### Production Build
 
@@ -186,7 +187,7 @@ npm start
 
 ## API Reference
 
-All API routes are prefixed with `/api/`. Protected routes verify the active Clerk session server-side and use its immutable user ID for Neon ownership checks.
+All API routes are prefixed with `/api/`. Protected routes verify the active Better Auth session server-side and use its immutable user ID for Neon ownership checks.
 
 ### Authentication
 
@@ -201,9 +202,6 @@ All API routes are prefixed with `/api/`. Protected routes verify the active Cle
 | `POST` | `/api/verify/sms` | Order an SMS verification number | Yes |
 | `GET` | `/api/verify/sms?orderId=` | Check code status | Yes |
 | `DELETE` | `/api/verify/sms?orderId=` | Cancel order | Yes |
-| `POST` | `/api/verify/voice` | Order a voice verification number | Yes |
-| `GET` | `/api/verify/voice?orderId=` | Check code status | Yes |
-| `DELETE` | `/api/verify/voice?orderId=` | Cancel order | Yes |
 
 ### Orders & Rentals
 
@@ -229,8 +227,8 @@ Or connect your GitHub repository to Vercel for automatic deployments on every p
 ### Production Checklist
 
 1. Set all environment variables in Vercel dashboard
-2. In Clerk, enable Username + Password, leave email optional, enable Google, and enable Smart bot sign-up protection
-3. Set the Neon and Clerk environment variables in Vercel
+2. Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in Vercel
+3. Set the Neon and Better Auth environment variables in Vercel
 4. Run `npm run db:migrate` against the production Neon database before deploying
 4. Enable HTTPS (automatic on Vercel)
 5. Set up a custom domain

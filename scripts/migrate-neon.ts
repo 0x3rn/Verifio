@@ -7,7 +7,7 @@ async function main() {
   const connectionString = process.env.DIRECT_URL;
   if (!connectionString) throw new Error('DIRECT_URL is required to apply Neon migrations.');
 
-  const migrationNames = ['001_initial_neon.sql', '002_clerk_auth_and_rate_limits.sql', '003_paid_action_locks.sql', '004_proxy_orders.sql', '005_proxy_extensions.sql', '006_textverified_rentals.sql', '007_textverified_duration_enum.sql', '008_pending_rentals.sql'];
+  const migrationNames = ['001_initial_neon.sql', '002_clerk_auth_and_rate_limits.sql', '003_paid_action_locks.sql', '004_proxy_orders.sql', '005_proxy_extensions.sql', '006_textverified_rentals.sql', '007_textverified_duration_enum.sql', '008_pending_rentals.sql', '009_better_auth.sql', '010_better_auth_column_names.sql'];
   const sql = postgres(connectionString, { max: 1, connect_timeout: 15, prepare: false });
 
   try {

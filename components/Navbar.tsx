@@ -3,12 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useClerk } from '@clerk/nextjs';
+import { authClient } from '@/lib/auth-client';
 import { HomeIcon, ClipboardIcon, PhoneIcon, WalletIcon, LogoutIcon, GlobeIcon } from '@/components/Icons';
 import type { User } from '@/lib/types';
 
 export function Navbar() {
-  const { signOut } = useClerk();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
   const isDashboard = pathname.startsWith('/dashboard');
@@ -65,9 +64,14 @@ export function Navbar() {
   }, [userMenuOpen, isAuthPage]);
 
   const handleLogout = async () => {
-    await signOut({ redirectUrl: '/' });
-    setUser(null);
-    setUserMenuOpen(false);
+    try {
+      await authClient.signOut();
+      setUser(null);
+      setUserMenuOpen(false);
+      window.location.assign('/');
+    } catch {
+      setAuthCheckFailed(true);
+    }
   };
 
   // Don't render navbar on auth pages to keep them clean

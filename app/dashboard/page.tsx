@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
 import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
 import { Combobox } from '@/components/Combobox';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
@@ -30,7 +29,6 @@ function formatTime(ms: number): string {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isLoaded: isAuthLoaded, getToken } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -75,13 +73,8 @@ export default function DashboardPage() {
   }, []);
 
   const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    // Force a fresh token after auth transitions so the first dashboard
-    // request cannot race Clerk's session hydration.
-    const token = await getToken({ skipCache: true });
-    const headers = new Headers(init.headers);
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    return fetch(input, { ...init, headers });
-  }, [getToken]);
+    return fetch(input, { ...init, credentials: 'include' });
+  }, []);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -90,15 +83,13 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (!isAuthLoaded) return;
-
     let cancelled = false;
     const fetchUserAndOrders = async () => {
       try {
         // A lost network connection must not be treated as an intentional sign-out.
         // The server's 401 is the only state that should send a user to /login.
-        // Use the Clerk token on the first request after navigation. This avoids
-        // a race where the browser cookie is not available yet after sign-in.
+        // Keep the request cookie-backed so a navigation or refresh can recover
+        // without duplicating authentication state in the client.
         const userRes = await authenticatedFetch('/api/auth/me');
         if (userRes.ok) { 
           const data = await userRes.json(); 
@@ -128,7 +119,7 @@ export default function DashboardPage() {
     };
     fetchUserAndOrders();
     return () => { cancelled = true; };
-  }, [authenticatedFetch, isAuthLoaded, router]);
+  }, [authenticatedFetch, router]);
 
   useEffect(() => {
     const fetchLists = async () => {

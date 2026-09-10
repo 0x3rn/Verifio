@@ -6,7 +6,7 @@ process.env.PLAYWRIGHT_BROWSERS_PATH ??= path.resolve('.playwright-browsers');
 export default defineConfig({
   testDir: './tests',
   timeout: 45_000,
-  // The authenticated E2E specs intentionally share one Clerk test account.
+  // Authenticated E2E specs use the Better Auth test account supplied by env.
   // Run them in one worker so one test cannot invalidate another test's session.
   workers: 1,
   use: {

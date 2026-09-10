@@ -1,4 +1,3 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import NextTopLoader from 'nextjs-toploader';
@@ -83,8 +82,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ClerkProvider>
-          <NextTopLoader
+        <NextTopLoader
           color="#5b3a9d"
           initialPosition={0.08}
           crawlSpeed={120}
@@ -94,16 +92,15 @@ export default function RootLayout({
           easing="cubic-bezier(0.4, 0, 0.2, 1)"
           speed={400}
           shadow="0 0 10px #5b3a9d,0 0 5px #5b3a9d"
-          />
-          <ThemeProvider>
+        />
+        <ThemeProvider>
           <PageViewTracker />
           <div className="body-wrapper">
           <Navbar />
           <main className="main-content">{children}</main>
           <Footer />
           </div>
-          </ThemeProvider>
-        </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

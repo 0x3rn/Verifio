@@ -94,7 +94,7 @@ export default function PrivacyPage() {
 
         <h2 className="legal-page__heading">6. Third-Party Services Used by Verifio</h2>
         <p className="legal-page__text">
-          The Service may use third-party infrastructure and integrations, including Clerk for authentication, PostHog for product analytics where enabled, Neon or another database host for application data, Cryptomus or another payment provider for cryptocurrency payments, and phone-number or messaging providers such as SMSpool or TextVerified. The exact providers may change as the Service develops. Their access is limited to the information needed for the function they provide, and their own privacy notices govern their independent processing.
+          The Service may use third-party infrastructure and integrations, including an authentication provider, PostHog for product analytics where enabled, Neon or another database host for application data, Cryptomus or another payment provider for cryptocurrency payments, and phone-number or messaging providers such as SMSpool or TextVerified. The exact providers may change as the Service develops. Their access is limited to the information needed for the function they provide, and their own privacy notices govern their independent processing.
         </p>
 
         <h2 className="legal-page__heading">7. Cookies and Similar Technologies</h2>
