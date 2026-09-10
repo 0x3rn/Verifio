@@ -69,7 +69,7 @@
 | **Auth** | Better Auth (username/email and password, database-backed sessions) |
 | **API** | SMSpool API for number provisioning |
 | **Database** | Neon PostgreSQL with an auditable wallet ledger |
-| **Deployment** | Vercel |
+| **Deployment** | Cloudflare Workers via OpenNext |
 
 ---
 
@@ -106,7 +106,8 @@ verifio/
 │   ├── store.ts                    # In-memory data store
 │   └── types.ts                    # TypeScript interfaces & constants
 ├── app/api/auth/[...all]/route.ts   # Better Auth request handler
-├── vercel.json                     # Vercel deployment configuration
+├── open-next.config.ts             # OpenNext Cloudflare adapter configuration
+├── wrangler.jsonc                  # Cloudflare Worker configuration
 ├── next.config.ts                  # Next.js configuration
 └── tsconfig.json                   # TypeScript configuration
 ```
@@ -216,22 +217,23 @@ All API routes are prefixed with `/api/`. Protected routes verify the active Bet
 
 ## Deployment
 
-This project is configured for **Vercel**. Deploy with a single command:
+This project is configured for **Cloudflare Workers via OpenNext**. Deploy with:
 
 ```bash
-vercel
+npm run deploy
 ```
 
-Or connect your GitHub repository to Vercel for automatic deployments on every push.
+For a connected Cloudflare build, use `npm run build:worker` as the build command
+and `npx wrangler deploy` only after the OpenNext bundle has been generated. The
+recommended path is the `npm run deploy` script above.
 
 ### Production Checklist
 
-1. Set all environment variables in Vercel dashboard
-2. Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in Vercel
-3. Set the Neon and Better Auth environment variables in Vercel
+1. Set all environment variables as Cloudflare Worker secrets/vars
+2. Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in Cloudflare
+3. Set the Neon and provider environment variables in Cloudflare
 4. Run `npm run db:migrate` against the production Neon database before deploying
-4. Enable HTTPS (automatic on Vercel)
-5. Set up a custom domain
+5. Enable HTTPS and configure the custom domain
 
 ---
 

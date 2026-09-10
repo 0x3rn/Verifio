@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // OpenNext's file tracer can otherwise copy pg-cloudflare's package.json
+  // without the Worker-specific entry files required by pg at bundle time.
+  outputFileTracingIncludes: {
+    '**/*': [
+      './node_modules/pg-cloudflare/dist/**',
+      './node_modules/pg-cloudflare/esm/**',
+    ],
+  },
   async headers() {
     return [
       {
