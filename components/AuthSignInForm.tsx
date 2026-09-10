@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useClerk, useSignIn } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
+import { withClerkTimeout } from '@/lib/clerk-client';
 
 function getClerkErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null;
@@ -22,6 +23,8 @@ export function AuthSignInForm() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [needsDeviceTrust, setNeedsDeviceTrust] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,30 +50,45 @@ export function AuthSignInForm() {
       const clearStaleSession = async () => {
         const staleSession = clerk.client?.sessions.find((session) => session.status === 'active');
         if (!staleSession) return false;
-        await clerk.signOut({ sessionId: staleSession.id });
-        await signIn.reset();
+        await withClerkTimeout(clerk.signOut({ sessionId: staleSession.id }));
+        await withClerkTimeout(signIn.reset());
         return true;
       };
 
       await clearStaleSession();
-      let result = await signIn.password({
+      let result = await withClerkTimeout(signIn.password({
         identifier: normalizedIdentifier,
         password: submittedPassword,
-      });
+      }));
 
       if (result.error && isAlreadySignedInError(result.error)) {
         if (!(await clearStaleSession())) {
           setErrorMessage('This browser already has a sign-in session, but it could not be restored. Refresh and try again.');
           return;
         }
-        result = await signIn.password({
+        result = await withClerkTimeout(signIn.password({
           identifier: normalizedIdentifier,
           password: submittedPassword,
-        });
+        }));
       }
 
       if (result.error) {
         setErrorMessage('Those sign-in details were not accepted. Check them and try again.');
+        return;
+      }
+
+      if (signIn.status === 'needs_client_trust') {
+        const emailFactor = signIn.supportedSecondFactors.find((factor) => factor.strategy === 'email_code');
+        if (!emailFactor) {
+          setErrorMessage('This account requires an additional verification method that is not available here.');
+          return;
+        }
+        const verificationResult = await withClerkTimeout(signIn.mfa.sendEmailCode());
+        if (verificationResult.error) {
+          setErrorMessage('We could not send the device verification code. Please try again.');
+          return;
+        }
+        setNeedsDeviceTrust(true);
         return;
       }
 
@@ -79,21 +97,110 @@ export function AuthSignInForm() {
         return;
       }
 
-      const finalizeResult = await signIn.finalize({
-        navigate: async () => undefined,
-      });
+      const finalizeResult = await withClerkTimeout(signIn.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) return;
+          window.location.assign(decorateUrl('/dashboard'));
+        },
+      }));
 
       if (finalizeResult.error) {
         setErrorMessage('Clerk accepted the credentials, but the browser session could not be activated. Refresh and try again.');
         return;
       }
 
-      window.location.assign('/dashboard');
-    } catch {
-      setErrorMessage('Those sign-in details were not accepted. Check them and try again.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+        ? 'The authentication service did not respond. Check your connection and try again.'
+        : 'Those sign-in details were not accepted. Check them and try again.');
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleVerifyDevice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage('');
+    const normalizedCode = verificationCode.replace(/\s/g, '');
+    if (!/^\d{4,8}$/.test(normalizedCode)) {
+      setErrorMessage('Enter the verification code sent to your email.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await withClerkTimeout(signIn.mfa.verifyEmailCode({ code: normalizedCode }));
+      if (result.error) {
+        setErrorMessage('That verification code was not accepted. Check it and try again.');
+        return;
+      }
+      if (signIn.status !== 'complete' || !signIn.createdSessionId) {
+        setErrorMessage('The device could not be verified. Please try again.');
+        return;
+      }
+      const finalizeResult = await withClerkTimeout(signIn.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) return;
+          window.location.assign(decorateUrl('/dashboard'));
+        },
+      }));
+      if (finalizeResult.error) {
+        setErrorMessage('The browser session could not be activated. Refresh and try again.');
+        return;
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+        ? 'The authentication service did not respond. Check your connection and try again.'
+        : 'We could not verify this device. Check the code and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (needsDeviceTrust) {
+    return (
+      <form className="auth-form" onSubmit={handleVerifyDevice} noValidate>
+        <div className="auth-form__error-slot" aria-live="polite">
+          {errorMessage ? <p className="auth-error" role="alert">{errorMessage}</p> : null}
+        </div>
+        <p className="auth-verification-hint">We sent a verification code to the email address on your account.</p>
+        <div>
+          <label className="form-field__label" htmlFor="sign-in-verification-code">Verification code</label>
+          <input
+            className="form-field__input"
+            id="sign-in-verification-code"
+            name="verificationCode"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={verificationCode}
+            onChange={(event) => setVerificationCode(event.target.value)}
+            disabled={isSubmitting}
+            required
+          />
+        </div>
+        <button className="auth-submit" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Verifying…' : 'Verify device'}
+        </button>
+        <button className="auth-secondary-button" type="button" onClick={async () => {
+          setErrorMessage('');
+          setIsSubmitting(true);
+          try {
+            const result = await withClerkTimeout(signIn.mfa.sendEmailCode());
+            if (result.error) setErrorMessage('We could not send a new code. Please try again.');
+            else setErrorMessage('A new verification code was sent.');
+          } catch (error) {
+            setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+              ? 'The authentication service did not respond. Check your connection and try again.'
+              : 'We could not send a new code. Please try again.');
+          } finally {
+            setIsSubmitting(false);
+          }
+        }} disabled={isSubmitting}>
+          Send a new code
+        </button>
+      </form>
+    );
   }
 
   return (

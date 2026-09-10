@@ -3,19 +3,7 @@
 import Link from 'next/link';
 import { useSignUp } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
-
-const CLERK_REQUEST_TIMEOUT_MS = 20_000;
-
-function withClerkTimeout<T>(operation: Promise<T>): Promise<T> {
-  let timeoutId: number | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error('CLERK_REQUEST_TIMEOUT')), CLERK_REQUEST_TIMEOUT_MS);
-  });
-
-  return Promise.race([operation, timeout]).finally(() => {
-    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-  });
-}
+import { withClerkTimeout } from '@/lib/clerk-client';
 
 export function AuthSignUpForm() {
   const { signUp, fetchStatus } = useSignUp();
@@ -26,6 +14,8 @@ export function AuthSignUpForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,8 +40,8 @@ export function AuthSignUpForm() {
       setErrorMessage('Your username must be at least 3 characters.');
       return;
     }
-    if (password.length < 8) {
-      setErrorMessage('Your password must be at least 8 characters.');
+    if (password.length < 15) {
+      setErrorMessage('Your password must be at least 15 characters.');
       return;
     }
     if (password !== confirmPassword) {
@@ -72,13 +62,28 @@ export function AuthSignUpForm() {
         return;
       }
 
+      if (signUp.status === 'missing_requirements'
+        && signUp.unverifiedFields.includes('email_address')
+        && signUp.missingFields.length === 0) {
+        const verificationResult = await withClerkTimeout(signUp.verifications.sendEmailCode());
+        if (verificationResult.error) {
+          setErrorMessage('We could not send the verification code. Check your email address and try again.');
+          return;
+        }
+        setIsVerifyingEmail(true);
+        return;
+      }
+
       if (signUp.status !== 'complete' || !signUp.createdSessionId) {
         setErrorMessage('Additional verification is required before your account can be activated.');
         return;
       }
 
       const finalizeResult = await withClerkTimeout(signUp.finalize({
-        navigate: async () => undefined,
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) return;
+          window.location.assign(decorateUrl('/dashboard'));
+        },
       }));
 
       if (finalizeResult.error) {
@@ -86,7 +91,6 @@ export function AuthSignUpForm() {
         return;
       }
 
-      window.location.assign('/dashboard');
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
         ? 'The authentication service did not respond. Check your connection and try again.'
@@ -94,6 +98,95 @@ export function AuthSignUpForm() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleVerifyEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage('');
+    const normalizedCode = emailCode.replace(/\s/g, '');
+    if (!/^\d{4,8}$/.test(normalizedCode)) {
+      setErrorMessage('Enter the verification code sent to your email.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const verificationResult = await withClerkTimeout(signUp.verifications.verifyEmailCode({ code: normalizedCode }));
+      if (verificationResult.error) {
+        setErrorMessage('That verification code was not accepted. Check it and try again.');
+        return;
+      }
+
+      if (signUp.status !== 'complete' || !signUp.createdSessionId) {
+        setErrorMessage('Your email was verified, but the account is not ready yet. Please try again.');
+        return;
+      }
+
+      const finalizeResult = await withClerkTimeout(signUp.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) return;
+          window.location.assign(decorateUrl('/dashboard'));
+        },
+      }));
+      if (finalizeResult.error) {
+        setErrorMessage('Your account was created, but the browser session could not be activated. Refresh and try again.');
+        return;
+      }
+
+    } catch (error) {
+      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+        ? 'The authentication service did not respond. Check your connection and try again.'
+        : 'We could not verify your email. Check the code and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendEmailCode() {
+    setErrorMessage('');
+    setIsSubmitting(true);
+    try {
+      const result = await withClerkTimeout(signUp.verifications.sendEmailCode());
+      setErrorMessage(result.error ? 'We could not send a new code. Please try again.' : 'A new verification code was sent.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
+        ? 'The authentication service did not respond. Check your connection and try again.'
+        : 'We could not send a new code. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isVerifyingEmail) {
+    return (
+      <form className="auth-form" onSubmit={handleVerifyEmail} noValidate>
+        <div className="auth-form__error-slot" aria-live="polite">
+          {errorMessage ? <p className="auth-error" role="alert">{errorMessage}</p> : null}
+        </div>
+        <p className="auth-verification-hint">We sent a verification code to your email address.</p>
+        <div>
+          <label className="form-field__label" htmlFor="sign-up-email-code">Verification code</label>
+          <input
+            className="form-field__input"
+            id="sign-up-email-code"
+            name="emailCode"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={emailCode}
+            onChange={(event) => setEmailCode(event.target.value)}
+            disabled={isSubmitting}
+            required
+          />
+        </div>
+        <button className="auth-submit" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Verifying…' : 'Verify email'}
+        </button>
+        <button className="auth-secondary-button" type="button" onClick={handleResendEmailCode} disabled={isSubmitting}>
+          Send a new code
+        </button>
+      </form>
+    );
   }
 
   return (
@@ -164,6 +257,8 @@ export function AuthSignUpForm() {
       <button className="auth-submit" type="submit" disabled={!isLoaded || isSubmitting}>
         {isSubmitting ? 'Creating account…' : 'Create account'}
       </button>
+
+      <div id="clerk-captcha" />
 
       <p className="auth-footer__text">
         Already have an account? <Link className="auth-footer__link" href="/login">Sign in</Link>
