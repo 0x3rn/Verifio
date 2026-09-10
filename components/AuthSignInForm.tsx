@@ -97,17 +97,13 @@ export function AuthSignInForm() {
         return;
       }
 
-      const finalizeResult = await withClerkTimeout(signIn.finalize({
+      await withClerkTimeout(clerk.setActive({
+        session: signIn.createdSessionId,
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) return;
           window.location.assign(decorateUrl('/dashboard'));
         },
       }));
-
-      if (finalizeResult.error) {
-        setErrorMessage('Clerk accepted the credentials, but the browser session could not be activated. Refresh and try again.');
-        return;
-      }
 
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
@@ -138,16 +134,13 @@ export function AuthSignInForm() {
         setErrorMessage('The device could not be verified. Please try again.');
         return;
       }
-      const finalizeResult = await withClerkTimeout(signIn.finalize({
+      await withClerkTimeout(clerk.setActive({
+        session: signIn.createdSessionId,
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) return;
           window.location.assign(decorateUrl('/dashboard'));
         },
       }));
-      if (finalizeResult.error) {
-        setErrorMessage('The browser session could not be activated. Refresh and try again.');
-        return;
-      }
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
         ? 'The authentication service did not respond. Check your connection and try again.'

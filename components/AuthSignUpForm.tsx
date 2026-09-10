@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useSignUp } from '@clerk/nextjs';
+import { useClerk, useSignUp } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
 import { withClerkTimeout } from '@/lib/clerk-client';
 
 export function AuthSignUpForm() {
+  const clerk = useClerk();
   const { signUp, fetchStatus } = useSignUp();
   const isLoaded = fetchStatus !== 'fetching';
   const [email, setEmail] = useState('');
@@ -79,17 +80,13 @@ export function AuthSignUpForm() {
         return;
       }
 
-      const finalizeResult = await withClerkTimeout(signUp.finalize({
+      await withClerkTimeout(clerk.setActive({
+        session: signUp.createdSessionId,
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) return;
           window.location.assign(decorateUrl('/dashboard'));
         },
       }));
-
-      if (finalizeResult.error) {
-        setErrorMessage('Your account was created, but the browser session could not be activated. Refresh and try again.');
-        return;
-      }
 
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
@@ -122,16 +119,13 @@ export function AuthSignUpForm() {
         return;
       }
 
-      const finalizeResult = await withClerkTimeout(signUp.finalize({
+      await withClerkTimeout(clerk.setActive({
+        session: signUp.createdSessionId,
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) return;
           window.location.assign(decorateUrl('/dashboard'));
         },
       }));
-      if (finalizeResult.error) {
-        setErrorMessage('Your account was created, but the browser session could not be activated. Refresh and try again.');
-        return;
-      }
 
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'CLERK_REQUEST_TIMEOUT'
