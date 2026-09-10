@@ -140,7 +140,10 @@ export function Navbar() {
                       <ClipboardIcon className="icon-md" /> Order History
                     </Link>
                     <Link href="/dashboard/proxies" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
-                      <GlobeIcon className="icon-md" /> Proxies
+                      <GlobeIcon className="icon-md" /> Proxy Plans
+                    </Link>
+                    <Link href="/dashboard/proxies/manage" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
+                      <GlobeIcon className="icon-md" /> My Proxies
                     </Link>
                     <Link href="/dashboard/rentals" onClick={() => setUserMenuOpen(false)} className="user-menu__dropdown-item">
                       <PhoneIcon className="icon-md" /> My Rentals

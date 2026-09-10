@@ -78,7 +78,7 @@ export default function RootLayout({
       <body>
         <ClerkProvider>
           <NextTopLoader
-          color="#6366f1"
+          color="#5b3a9d"
           initialPosition={0.08}
           crawlSpeed={120}
           height={3}
@@ -86,7 +86,7 @@ export default function RootLayout({
           showSpinner={false}
           easing="cubic-bezier(0.4, 0, 0.2, 1)"
           speed={400}
-          shadow="0 0 10px #6366f1,0 0 5px #6366f1"
+          shadow="0 0 10px #5b3a9d,0 0 5px #5b3a9d"
           />
           <ThemeProvider>
           <PageViewTracker />

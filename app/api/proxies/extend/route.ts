@@ -11,7 +11,7 @@ import {
   releaseRequestLock,
 } from '@/lib/db';
 import { extendProxyPackage, getProxyDetails, isProxyConfigured } from '@/lib/proxyapp';
-import { applyMarkup } from '@/lib/smspool';
+import { calculateProxyExtensionPrice } from '@/lib/smspool';
 import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
 
 function hasLaterExpiry(candidate: string | undefined, previous: string | null): boolean {
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'The provider did not return a valid extension price for this proxy.' }, { status: 502 });
     }
 
-    const cost = applyMarkup(proxy.extend_cost);
+    const cost = calculateProxyExtensionPrice(order.cost);
     extensionId = generateProxyExtensionId();
     await createPendingProxyExtension({
       id: extensionId,

@@ -33,6 +33,10 @@ type StoredOrder = Omit<VerificationOrder, 'cost' | 'createdAt' | 'completedAt' 
 
 type StoredRental = Omit<RentalNumber, 'cost' | 'startedAt' | 'expiresAt' | 'renewedAt'> & {
   costCents: string | number;
+  smspoolRentalId: string | null;
+  providerRentalId: string | null;
+  areaCodes: string[] | null;
+  billingCycleId: string | null;
   startedAt: Date | string;
   expiresAt: Date | string;
   renewedAt: Date | string | null;
@@ -104,13 +108,21 @@ function toRental(rental: StoredRental): RentalNumber {
   return {
     id: rental.id,
     userId: rental.userId,
-    phoneNumber: formatPhoneNumber(rental.phoneNumber, rental.country),
+    phoneNumber: rental.status === 'pending' ? rental.phoneNumber : formatPhoneNumber(rental.phoneNumber, rental.country),
     country: rental.country,
     service: rental.service,
     status: rental.status,
     plan: rental.plan,
     cost: centsToAmount(rental.costCents),
-    smspoolRentalId: rental.smspoolRentalId,
+    provider: rental.provider || 'smspool',
+    providerRentalId: rental.providerRentalId || rental.smspoolRentalId || '',
+    serviceScope: rental.serviceScope || 'specific',
+    isRenewable: Boolean(rental.isRenewable),
+    numberType: 'mobile',
+    capability: 'sms',
+    alwaysOn: Boolean(rental.alwaysOn),
+    areaCodes: rental.areaCodes || [],
+    billingCycleId: rental.billingCycleId || null,
     startedAt: toISOString(rental.startedAt),
     expiresAt: toISOString(rental.expiresAt),
     renewedAt: rental.renewedAt ? toISOString(rental.renewedAt) : null,
@@ -390,10 +402,14 @@ export async function createRentalWithDebit(rental: RentalNumber) {
     await transaction`
       INSERT INTO rentals (
         id, user_id, phone_number, country, service, status, plan, cost_cents,
-        smspool_rental_id, started_at, expires_at, renewed_at
+        smspool_rental_id, provider, provider_rental_id, service_scope, is_renewable,
+        number_type, capability, always_on, area_codes, billing_cycle_id,
+        started_at, expires_at, renewed_at
       ) VALUES (
         ${rental.id}, ${rental.userId}, ${rental.phoneNumber}, ${rental.country}, ${rental.service},
-        ${rental.status}, ${rental.plan}, ${costCents}, ${rental.smspoolRentalId},
+        ${rental.status}, ${rental.plan}, ${costCents}, ${rental.provider === 'smspool' ? rental.providerRentalId : null},
+        ${rental.provider}, ${rental.providerRentalId}, ${rental.serviceScope}, ${rental.isRenewable},
+        ${rental.numberType}, ${rental.capability}, ${rental.alwaysOn}, ${rental.areaCodes}, ${rental.billingCycleId},
         ${new Date(rental.startedAt)}, ${new Date(rental.expiresAt)}, ${rental.renewedAt ? new Date(rental.renewedAt) : null}
       )
     `;
@@ -408,7 +424,10 @@ export async function createRentalWithDebit(rental: RentalNumber) {
 export async function getRental(rentalId: string): Promise<RentalNumber | undefined> {
   const [rental] = await getDb()<StoredRental[]>`
     SELECT id, user_id AS "userId", phone_number AS "phoneNumber", country, service, status, plan,
-      cost_cents AS "costCents", smspool_rental_id AS "smspoolRentalId", started_at AS "startedAt",
+      cost_cents AS "costCents", smspool_rental_id AS "smspoolRentalId", provider,
+      provider_rental_id AS "providerRentalId", service_scope AS "serviceScope", is_renewable AS "isRenewable",
+      number_type AS "numberType", capability, always_on AS "alwaysOn", area_codes AS "areaCodes", billing_cycle_id AS "billingCycleId",
+      started_at AS "startedAt",
       expires_at AS "expiresAt", renewed_at AS "renewedAt"
     FROM rentals
     WHERE id = ${rentalId}
@@ -419,7 +438,10 @@ export async function getRental(rentalId: string): Promise<RentalNumber | undefi
 export async function getUserRentals(userId: string): Promise<RentalNumber[]> {
   const rentals = await getDb()<StoredRental[]>`
     SELECT id, user_id AS "userId", phone_number AS "phoneNumber", country, service, status, plan,
-      cost_cents AS "costCents", smspool_rental_id AS "smspoolRentalId", started_at AS "startedAt",
+      cost_cents AS "costCents", smspool_rental_id AS "smspoolRentalId", provider,
+      provider_rental_id AS "providerRentalId", service_scope AS "serviceScope", is_renewable AS "isRenewable",
+      number_type AS "numberType", capability, always_on AS "alwaysOn", area_codes AS "areaCodes", billing_cycle_id AS "billingCycleId",
+      started_at AS "startedAt",
       expires_at AS "expiresAt", renewed_at AS "renewedAt"
     FROM rentals
     WHERE user_id = ${userId}

@@ -7,8 +7,9 @@ import { useAuth } from '@clerk/nextjs';
 import { SpinnerIcon, ClipboardIcon, WalletIcon, CheckIcon, RefreshIcon } from '@/components/Icons';
 import { Combobox } from '@/components/Combobox';
 import { DashboardSkeleton } from '@/components/DashboardSkeleton';
-import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
-import type { User, PlanTier, VerificationOrder } from '@/lib/types';
+import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, TEXTVERIFIED_RENTAL_DURATIONS } from '@/lib/types';
+import { PROVIDER_DISPLAY_NAMES } from '@/lib/types';
+import type { User, VerificationOrder, TextVerifiedRentalDuration } from '@/lib/types';
 import { identifyUser, trackEvent } from '@/lib/posthog';
 
 interface SelectableItem {
@@ -43,7 +44,17 @@ export default function DashboardPage() {
   const [textVerifiedServices, setTextVerifiedServices] = useState<string[]>([]);
   const [textVerifiedConfigured, setTextVerifiedConfigured] = useState(false);
   const [listsLoading, setListsLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<PlanTier>('monthly');
+  const [rentalServiceScope, setRentalServiceScope] = useState<'specific' | 'all'>('specific');
+  const [selectedRentalDuration, setSelectedRentalDuration] = useState<TextVerifiedRentalDuration>('oneDay');
+  const [rentalIsRenewable, setRentalIsRenewable] = useState(false);
+  const [rentalAlwaysOn, setRentalAlwaysOn] = useState(false);
+  const [rentalAllowBackOrder, setRentalAllowBackOrder] = useState(false);
+  const [rentalAreaCode, setRentalAreaCode] = useState('');
+  const [rentalServices, setRentalServices] = useState<SelectableItem[]>([]);
+  const [rentalAreaCodes, setRentalAreaCodes] = useState<SelectableItem[]>([]);
+  const [rentalConfigLoading, setRentalConfigLoading] = useState(true);
+  const [rentalPricing, setRentalPricing] = useState<{ basePrice: number; displayPrice: number; availableQuantity: number } | null>(null);
+  const [rentalPricingLoading, setRentalPricingLoading] = useState(false);
 
   const [activeOrders, setActiveOrders] = useState<VerificationOrder[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
@@ -56,8 +67,17 @@ export default function DashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (requestedTab !== 'sms' && requestedTab !== 'proxy' && requestedTab !== 'rental') return;
+    const timer = window.setTimeout(() => setActiveTab(requestedTab), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const authenticatedFetch = useCallback(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const token = await getToken();
+    // Force a fresh token after auth transitions so the first dashboard
+    // request cannot race Clerk's session hydration.
+    const token = await getToken({ skipCache: true });
     const headers = new Headers(init.headers);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     return fetch(input, { ...init, headers });
@@ -77,7 +97,9 @@ export default function DashboardPage() {
       try {
         // A lost network connection must not be treated as an intentional sign-out.
         // The server's 401 is the only state that should send a user to /login.
-        const userRes = await fetch('/api/auth/me');
+        // Use the Clerk token on the first request after navigation. This avoids
+        // a race where the browser cookie is not available yet after sign-in.
+        const userRes = await authenticatedFetch('/api/auth/me');
         if (userRes.ok) { 
           const data = await userRes.json(); 
           if (!cancelled) {
@@ -127,7 +149,24 @@ export default function DashboardPage() {
     fetchLists();
   }, []);
 
-  useEffect(() => { 
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/rentals?config=1')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled || !data) return;
+        if (Array.isArray(data.services)) setRentalServices(data.services.map((name: string) => ({ id: name, name })));
+        if (Array.isArray(data.areaCodes)) setRentalAreaCodes(data.areaCodes.map((item: { areaCode: string; state: string }) => ({ id: item.areaCode, name: `${item.areaCode} · ${item.state}`, code: item.areaCode })));
+      })
+      .catch(() => undefined)
+      .finally(() => { if (!cancelled) setRentalConfigLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     if (user && !hasIdentified.current) {
       identifyUser(user.id, { username: user.username, email: user.email || undefined }); 
       hasIdentified.current = true;
@@ -149,6 +188,30 @@ export default function DashboardPage() {
     fetchPricing();
     return () => { cancelled = true; };
   }, [authenticatedFetch, selectedService, selectedCountry, selectedProvider, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'rental' || (rentalServiceScope === 'specific' && !selectedService)) return;
+    let cancelled = false;
+    const fetchRentalPricing = async () => {
+      setRentalPricingLoading(true);
+      setRentalPricing(null);
+      const params = new URLSearchParams({
+        quote: '1',
+        duration: selectedRentalDuration,
+        isRenewable: String(rentalIsRenewable),
+        serviceName: rentalServiceScope === 'all' ? 'allservices' : selectedService,
+        alwaysOn: String(rentalAlwaysOn),
+      });
+      if (rentalAreaCode) params.set('areaCode', rentalAreaCode);
+      try {
+        const res = await authenticatedFetch(`/api/rentals?${params.toString()}`);
+        if (res.ok && !cancelled) setRentalPricing(await res.json());
+      } catch { /* show the unquoted state */ }
+      finally { if (!cancelled) setRentalPricingLoading(false); }
+    };
+    fetchRentalPricing();
+    return () => { cancelled = true; };
+  }, [activeTab, authenticatedFetch, rentalAreaCode, rentalIsRenewable, rentalServiceScope, rentalAlwaysOn, selectedRentalDuration, selectedService]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -187,14 +250,24 @@ export default function DashboardPage() {
       router.push('/dashboard/proxies');
       return;
     }
-    if (!selectedService || !selectedCountry) { setStatusMessage('Please select a service and country.'); return; }
-    if (activeOrders.length >= 5) { setStatusMessage('Limit of 5 active orders reached.'); return; }
+    if (activeTab === 'rental') {
+      if (rentalServiceScope === 'specific' && !selectedService) { setStatusMessage('Please select a service.'); return; }
+    } else if (!selectedService || !selectedCountry) { setStatusMessage('Please select a service and country.'); return; }
+    if (activeTab === 'sms' && activeOrders.length >= 5) { setStatusMessage('Limit of 5 active orders reached.'); return; }
 
     setWorking(true); setStatusMessage('Ordering number...'); 
     try {
       const endpoint = activeTab === 'rental' ? '/api/rentals' : '/api/verify/sms';
-      const body: Record<string, string> = { country: selectedCountry, service: selectedService };
-      if (activeTab === 'rental') body.plan = selectedPlan;
+      const body: Record<string, unknown> = { country: activeTab === 'rental' ? 'US' : selectedCountry, service: selectedService };
+      if (activeTab === 'rental') {
+        body.serviceScope = rentalServiceScope;
+        body.serviceName = rentalServiceScope === 'all' ? 'allservices' : selectedService;
+        body.duration = selectedRentalDuration;
+        body.isRenewable = rentalIsRenewable;
+        body.alwaysOn = rentalAlwaysOn;
+        body.allowBackOrderReservations = rentalAllowBackOrder;
+        body.areaCodeSelectOption = rentalAreaCode ? [rentalAreaCode] : [];
+      }
       if (activeTab === 'sms') body.provider = selectedProvider;
       const res = await authenticatedFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
@@ -212,7 +285,7 @@ export default function DashboardPage() {
       setUser(prev => prev ? { ...prev, balance: prev.balance - data.order.cost } : prev);
     } catch { setStatusMessage('An unexpected error occurred.'); }
     finally { setWorking(false); }
-  }, [authenticatedFetch, selectedService, selectedCountry, selectedPlan, selectedProvider, activeTab, activeOrders.length, router]);
+  }, [authenticatedFetch, selectedService, selectedCountry, selectedProvider, activeTab, activeOrders.length, router, rentalServiceScope, selectedRentalDuration, rentalIsRenewable, rentalAlwaysOn, rentalAllowBackOrder, rentalAreaCode]);
 
   const handleCheckCode = useCallback(async (orderId: string) => {
     const order = activeOrders.find(o => o.id === orderId);
@@ -265,6 +338,11 @@ export default function DashboardPage() {
     return [...countries].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [countries]);
 
+  const availableRentalDurations = useMemo(
+    () => TEXTVERIFIED_RENTAL_DURATIONS.filter((duration) => duration.renewable === rentalIsRenewable),
+    [rentalIsRenewable],
+  );
+
   const selectedServiceName = services.find(service => service.id === selectedService)?.name || '';
   const selectedCountryCode = countries.find(country => country.id === selectedCountry)?.code?.toUpperCase() || '';
   const textVerifiedAvailable = Boolean(
@@ -276,14 +354,14 @@ export default function DashboardPage() {
   const providerOptions = [
     {
       id: 'smspool' as const,
-      name: 'SMSPool',
-      description: 'Global SMS inventory',
+      name: PROVIDER_DISPLAY_NAMES.smspool,
+      description: 'Broad SMS coverage',
       available: Boolean(selectedService && selectedCountry),
     },
     {
       id: 'textverified' as const,
-      name: 'Text Verified',
-      description: 'US mobile numbers',
+      name: PROVIDER_DISPLAY_NAMES.textverified,
+      description: 'US mobile coverage',
       available: textVerifiedAvailable,
     },
   ];
@@ -331,7 +409,7 @@ export default function DashboardPage() {
         {/* Left Panel: Create Verification */}
         <div className="dash-panel dash-verification-console">
           <div className="dash-panel__header dash-panel__header--console">
-            <h2 className="dash-panel__title">Create Verification</h2>
+            <h2 className="dash-panel__title">{activeTab === 'rental' ? 'Rent a phone number' : 'Create Verification'}</h2>
           </div>
           
           <div className="dash-panel__content dash-panel__content--console">
@@ -341,7 +419,7 @@ export default function DashboardPage() {
               {(['sms', 'proxy', 'rental'] as const).map(tab => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => { setActiveTab(tab); setSelectedService(''); }}
                   className={`segmented-control__btn ${activeTab === tab ? 'segmented-control__btn--active' : ''}`}
                 >
                   {tab === 'sms' ? 'SMS' : tab === 'proxy' ? 'Proxy' : 'Rental'}
@@ -359,26 +437,52 @@ export default function DashboardPage() {
             ) : (
               <>
                 {/* Selectors */}
-                <div className="dash-selectors dash-console__choices">
-                  <Combobox
-                    label="Service"
-                    items={filteredServices}
-                    selectedId={selectedService}
-                    onSelect={(id) => { setSelectedService(id); setSelectedProvider('smspool'); }}
-                    placeholder="Select a service..."
-                    loading={listsLoading}
-                  />
+                {activeTab === 'rental' ? (
+                  <div className="dash-rental-options">
+                    <div className="dash-selector dash-rental-renewability">
+                      <div className="dash-rental-renewability__header">
+                        <label className="dash-label">Renewability</label>
+                        <span>Renewable unlocks All services</span>
+                      </div>
+                      <div className="dash-rental-renewal" role="radiogroup" aria-label="Renewability">
+                        <button type="button" role="radio" aria-checked={!rentalIsRenewable} className={!rentalIsRenewable ? 'is-active' : ''} onClick={() => { setRentalIsRenewable(false); setRentalServiceScope('specific'); setSelectedRentalDuration('oneDay'); }}>One-time</button>
+                        <button type="button" role="radio" aria-checked={rentalIsRenewable} className={rentalIsRenewable ? 'is-active' : ''} onClick={() => { setRentalIsRenewable(true); setSelectedRentalDuration('thirtyDay'); }}>Renewable</button>
+                      </div>
+                    </div>
 
-                  <Combobox
-                    label="Country"
-                    items={filteredCountries}
-                    selectedId={selectedCountry}
-                    onSelect={(id) => { setSelectedCountry(id); setSelectedProvider('smspool'); }}
-                    placeholder="Select a country..."
-                    loading={listsLoading}
-                    showFlags
-                  />
-                </div>
+                    <div className="dash-selector dash-rental-scope">
+                      <label className="dash-label">Number service scope</label>
+                      <div className="dash-rental-scope__options" role="radiogroup" aria-label="Number service scope">
+                        <button type="button" role="radio" aria-checked={rentalServiceScope === 'specific'} className={rentalServiceScope === 'specific' ? 'is-active' : ''} onClick={() => setRentalServiceScope('specific')}>
+                          <strong>One service</strong><small>Use this number for one selected service</small>
+                        </button>
+                        <button type="button" role="radio" aria-checked={rentalServiceScope === 'all'} disabled={!rentalIsRenewable} className={rentalServiceScope === 'all' ? 'is-active' : ''} onClick={() => { setRentalServiceScope('all'); setSelectedService(''); }}>
+                          <strong>All services</strong><small>{rentalIsRenewable ? 'Use one line across supported services' : 'Available with renewable rentals'}</small>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="dash-selectors dash-console__choices dash-rental-selectors">
+                      {rentalServiceScope === 'specific' && (
+                        <Combobox label="Service" items={rentalServices} selectedId={selectedService} onSelect={setSelectedService} placeholder="Select a service..." loading={rentalConfigLoading} />
+                      )}
+                      <div className="dash-selector dash-rental-fixed-choice">
+                        <label className="dash-label">Country</label>
+                        <div className="dash-fixed-choice"><i className="fi fi-us combobox-country-flag" aria-hidden="true" /> United States</div>
+                      </div>
+                      <Combobox label="Area code" items={rentalAreaCodes} selectedId={rentalAreaCode} onSelect={setRentalAreaCode} placeholder="Any area code" loading={rentalConfigLoading} />
+                    </div>
+
+                    <div className="dash-rental-facts" aria-label="Rental number capabilities">
+                      <span><b>Mobile</b> number</span><span><b>SMS</b> receiving</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="dash-selectors dash-console__choices">
+                    <Combobox label="Service" items={filteredServices} selectedId={selectedService} onSelect={(id) => { setSelectedService(id); setSelectedProvider('smspool'); }} placeholder="Select a service..." loading={listsLoading} />
+                    <Combobox label="Country" items={filteredCountries} selectedId={selectedCountry} onSelect={(id) => { setSelectedCountry(id); setSelectedProvider('smspool'); }} placeholder="Select a country..." loading={listsLoading} showFlags />
+                  </div>
+                )}
 
                 {activeTab === 'sms' && (
                   <div className="dash-selector dash-provider-selector">
@@ -406,24 +510,30 @@ export default function DashboardPage() {
                 )}
 
                 {activeTab === 'rental' && (
-                  <div className="dash-selector mt-2">
-                    <label className="dash-label">Rental Duration</label>
-                    <div className="rental-duration-grid">
-                      {Object.entries(PLAN_DURATIONS).map(([key, plan]) => (
-                        <button
-                          key={key}
-                          onClick={() => setSelectedPlan(key as PlanTier)}
-                          className={`rental-duration-btn ${selectedPlan === key ? 'rental-duration-btn--active' : ''}`}
-                          aria-pressed={selectedPlan === key}
-                        >
-                          <span className="rental-duration-btn__topline">
-                            <span className="rental-duration-btn__label">{plan.label}</span>
-                            <span className="rental-duration-btn__marker" aria-hidden="true">{selectedPlan === key ? '✓' : ''}</span>
-                          </span>
-                          <span className="rental-duration-btn__days">{plan.days} days</span>
-                          <span className="rental-duration-btn__discount">{plan.discount ? `${plan.discount}% off` : 'Standard rate'}</span>
-                        </button>
-                      ))}
+                  <div className="dash-rental-config">
+                    <div className="dash-selector mt-2">
+                      <label className="dash-label">Rental duration</label>
+                      <div className="rental-duration-grid">
+                        {availableRentalDurations.map((duration) => (
+                          <button
+                            key={duration.value}
+                            onClick={() => setSelectedRentalDuration(duration.value)}
+                            className={`rental-duration-btn ${selectedRentalDuration === duration.value ? 'rental-duration-btn--active' : ''}`}
+                            aria-pressed={selectedRentalDuration === duration.value}
+                          >
+                            <span className="rental-duration-btn__topline">
+                              <span className="rental-duration-btn__label">{duration.label}</span>
+                              <span className="rental-duration-btn__marker" aria-hidden="true">{selectedRentalDuration === duration.value ? '✓' : ''}</span>
+                            </span>
+                            <span className="rental-duration-btn__days">{duration.renewable ? 'Auto-renews each cycle' : "Doesn't auto-renew"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="dash-rental-toggles">
+                      <label className="dash-rental-toggle"><input type="checkbox" checked={rentalAlwaysOn} onChange={(event) => setRentalAlwaysOn(event.target.checked)} /><span><b>Always-on line</b><small>Instant message access; the number provider may add a small premium</small></span></label>
+                      <label className="dash-rental-toggle"><input type="checkbox" checked={rentalAllowBackOrder} onChange={(event) => setRentalAllowBackOrder(event.target.checked)} /><span><b>Allow back order</b><small>Queue a sold-out rental; no separate Verifio fee, provider pricing applies</small></span></label>
                     </div>
                   </div>
                 )}
@@ -432,8 +542,15 @@ export default function DashboardPage() {
                 <div className="dash-submit-area dash-console__submit">
                   <div className="dash-price">
                     <span className="dash-price__label">Total Cost</span>
-                    {activeTab === 'rental' ? (
-                      <span className="dash-price__value dash-price__value--estimate">Quoted after selection</span>
+                    {activeTab === 'rental' ? rentalPricingLoading ? (
+                      <span className="dash-price__loading">Calculating...</span>
+                    ) : rentalPricing ? (
+                      <>
+                        <span className="dash-price__value">${rentalPricing.displayPrice.toFixed(2)}</span>
+                        <span className="dash-price__success">{rentalPricing.availableQuantity > 0 ? `${rentalPricing.availableQuantity >= 9000 ? '9000+' : rentalPricing.availableQuantity} available` : 'Currently out of stock'}</span>
+                      </>
+                    ) : (
+                      <span className="dash-price__value dash-price__value--estimate">Select rental options</span>
                     ) : pricingLoading ? (
                       <span className="dash-price__loading">Calculating...</span>
                     ) : pricing ? (
@@ -447,10 +564,10 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={handleOrder}
-                    disabled={working || !selectedService || !selectedCountry || activeOrders.length >= 5}
+                    disabled={working || (activeTab === 'rental' ? (rentalServiceScope === 'specific' && !selectedService) : (!selectedService || !selectedCountry || activeOrders.length >= 5))}
                     className="dash-btn-primary"
                   >
-                    {working ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : null}
+                    {working ? <SpinnerIcon className="w-5 h-5" /> : null}
                     {working ? 'Processing' : `Get Number`}
                   </button>
                 </div>
@@ -510,7 +627,7 @@ export default function DashboardPage() {
                           disabled={checkingOrderId === order.id} 
                           className="dash-btn-secondary"
                         >
-                          {checkingOrderId === order.id ? <SpinnerIcon className="icon-sm animate-spin" /> : <RefreshIcon className="icon-sm" />}
+                          {checkingOrderId === order.id ? <SpinnerIcon className="icon-sm" /> : <RefreshIcon className="icon-sm" />}
                           {checkingOrderId === order.id ? 'Checking...' : 'Check SMS'}
                         </button>
                         <button 

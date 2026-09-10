@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, ClipboardIcon, GlobeIcon, SpinnerIcon } from '@/components/Icons';
-import type { ProxyAppDetails } from '@/lib/proxyapp';
+import type { ProxyAppDetails, ProxyBlocklistResult } from '@/lib/proxyapp';
 import type { ProxyOrder, ProxyPackage } from '@/lib/types';
 
 interface CredentialRecord {
@@ -27,6 +27,10 @@ export default function ProxiesPage() {
   const [orderingId, setOrderingId] = useState<number | null>(null);
   const [extendingId, setExtendingId] = useState<string | null>(null);
   const [copied, setCopied] = useState('');
+  const [blocklistUrl, setBlocklistUrl] = useState('');
+  const [blocklistResult, setBlocklistResult] = useState<ProxyBlocklistResult | null>(null);
+  const [blocklistError, setBlocklistError] = useState('');
+  const [checkingBlocklist, setCheckingBlocklist] = useState(false);
 
   const loadProxies = useCallback(async () => {
     try {
@@ -100,6 +104,32 @@ export default function ProxiesPage() {
     }
   };
 
+  const handleBlocklistCheck = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCheckingBlocklist(true);
+    setBlocklistError('');
+    setBlocklistResult(null);
+    try {
+      const response = await fetch('/api/proxies/blocklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: blocklistUrl }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      if (!response.ok) throw new Error(data.error || 'Unable to check this domain.');
+      if (typeof data.blocked !== 'boolean' || typeof data.domain !== 'string') throw new Error('The blacklist service returned an invalid response.');
+      setBlocklistResult(data as ProxyBlocklistResult);
+    } catch (checkError) {
+      setBlocklistError(checkError instanceof Error ? checkError.message : 'Unable to check this domain.');
+    } finally {
+      setCheckingBlocklist(false);
+    }
+  };
+
   const copyValue = async (label: string, value: string) => {
     await navigator.clipboard.writeText(value);
     setCopied(label);
@@ -114,24 +144,66 @@ export default function ProxiesPage() {
     <div className="proxies-page page-container">
       <div className="proxies-page__back-row">
         <Link href="/dashboard" className="orders-back-link"><ArrowLeftIcon className="icon-sm" /> Back to Dashboard</Link>
-        <span className="proxies-page__label">NETWORK ACCESS</span>
+          <span className="proxies-page__label">PROXY SERVICE</span>
       </div>
 
       <header className="proxies-page__header">
         <div>
-          <p className="proxies-page__eyebrow">Private routing, clearly managed</p>
+          <p className="proxies-page__eyebrow">Residential access, on demand</p>
           <h1 className="proxies-page__title">Residential proxies</h1>
-          <p className="proxies-page__subtitle">Choose a bandwidth package, then keep your proxy credentials and expiry details in one place.</p>
+          <p className="proxies-page__subtitle">Choose the bandwidth you need and get connected with a residential IP.</p>
         </div>
-        <div className="proxies-page__mark"><GlobeIcon className="icon-lg" /></div>
+        <Link href="/dashboard/proxies/manage" className="proxies-page__manage-link"><GlobeIcon className="icon-sm" /> Manage your proxies <span aria-hidden="true">↗</span></Link>
       </header>
 
       {error && <div className="proxies-page__error" role="alert">{error}</div>}
 
+      <section className="proxies-blocklist" aria-labelledby="proxy-blocklist-title">
+        <div className="proxies-blocklist__heading">
+          <div>
+            <p className="proxies-page__eyebrow">Before you buy</p>
+            <h2 id="proxy-blocklist-title">Blacklist Check</h2>
+          </div>
+          <span>Check a domain before ordering</span>
+        </div>
+        <form className="proxies-blocklist__form" onSubmit={handleBlocklistCheck}>
+          <label htmlFor="proxy-blocklist-url">URL or domain</label>
+          <div className="proxies-blocklist__controls">
+            <input
+              id="proxy-blocklist-url"
+              type="text"
+              inputMode="url"
+              autoComplete="url"
+              value={blocklistUrl}
+              onChange={(event) => {
+                setBlocklistUrl(event.target.value);
+                setBlocklistResult(null);
+                setBlocklistError('');
+              }}
+              placeholder="example.com or https://example.com"
+              aria-describedby="proxy-blocklist-help"
+              required
+            />
+            <button type="submit" className="dash-btn-primary" disabled={checkingBlocklist}>
+              {checkingBlocklist ? <><SpinnerIcon className="icon-sm" /> Checking…</> : 'Check'}
+            </button>
+          </div>
+          <p id="proxy-blocklist-help">Check whether a domain is currently blocked on the provider network. This does not purchase a proxy.</p>
+          {blocklistError && <p className="proxies-blocklist__status proxies-blocklist__status--error" role="alert">{blocklistError}</p>}
+          {blocklistResult && !blocklistError && (
+            <div className={`proxies-blocklist__status ${blocklistResult.blocked ? 'proxies-blocklist__status--blocked' : 'proxies-blocklist__status--clear'}`} role="status" aria-live="polite">
+              <strong>{blocklistResult.blocked ? 'Blocked' : 'Clear'}</strong>
+              <span>{blocklistResult.blocked ? 'This target is currently listed on the provider network blocklist.' : 'This target is not currently listed on the provider network blocklist.'}</span>
+              {blocklistResult.matchedRule && <small>Matched rule: {blocklistResult.matchedRule}</small>}
+            </div>
+          )}
+        </form>
+      </section>
+
       <section className="proxies-section" aria-labelledby="proxy-plans-title">
         <div className="proxies-section__heading">
-          <div><p className="orders-section-label">Available plans</p><h2 id="proxy-plans-title">Pick the right amount of bandwidth</h2></div>
-          <span>Prices include Verifio service handling.</span>
+          <div><p className="orders-section-label">Available plans</p><h2 id="proxy-plans-title">Choose your bandwidth plan</h2></div>
+          <span>Verifio pricing, shown upfront.</span>
         </div>
         {packages.length === 0 ? (
           <div className="proxies-empty">Proxy plans are temporarily unavailable. Please try again shortly.</div>
@@ -145,7 +217,7 @@ export default function ProxiesPage() {
                 <ul className="proxies-plan__features">
                   {proxyPackage.features.map((feature) => <li key={feature}>{feature}</li>)}
                 </ul>
-                <p className="proxies-plan__extension">Extendable for {proxyPackage.extensionDays} days at 50% of the provider&apos;s remaining package value.</p>
+                <p className="proxies-plan__extension">Extend for {proxyPackage.extensionDays} days at 50% of this plan&apos;s price.</p>
                 <div className="proxies-plan__footer">
                   <strong>${proxyPackage.displayPrice.toFixed(2)} <small>/ month</small></strong>
                   <button type="button" className="dash-btn-primary" disabled={orderingId !== null} onClick={() => handleOrder(proxyPackage.id)}>
@@ -160,7 +232,7 @@ export default function ProxiesPage() {
 
       <section className="proxies-section" aria-labelledby="active-proxies-title">
         <div className="proxies-section__heading"><div><p className="orders-section-label">Your access</p><h2 id="active-proxies-title">Active proxies</h2></div><span>{orders.length} purchase{orders.length === 1 ? '' : 's'}</span></div>
-        {orders.length === 0 ? <div className="proxies-empty">Your purchased proxies will appear here with their connection details.</div> : (
+        {orders.length === 0 ? <div className="proxies-empty">Your active proxy details will appear here after you place an order.</div> : (
           <div className="proxies-orders">
             {orders.map((order) => {
               const record = credentials.find((item) => item.orderId === order.id);

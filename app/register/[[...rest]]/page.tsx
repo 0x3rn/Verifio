@@ -8,7 +8,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-header">
           <h1 className="auth-header__title">Create Account</h1>
-          <p className="auth-header__subtitle">Email is optional. Add it for account and password recovery.</p>
+          <p className="auth-header__subtitle">Create an account with a username, password, and optional email address.</p>
         </div>
         <div className="auth-form-card auth-form-card--register clerk-auth-shell">
           <div className="auth-back-link-wrap">

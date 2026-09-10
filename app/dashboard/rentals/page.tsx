@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SpinnerIcon, PhoneIcon, ArrowLeftIcon, TrashIcon, EyeIcon, ClockIcon, CalendarIcon } from '@/components/Icons';
 import type { RentalNumber } from '@/lib/types';
-import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS } from '@/lib/types';
+import { PROVIDER_DISPLAY_NAMES, SUPPORTED_SERVICES, SUPPORTED_COUNTRIES, PLAN_DURATIONS, TEXTVERIFIED_RENTAL_DURATIONS } from '@/lib/types';
 
 export default function RentalsPage() {
   const router = useRouter();
@@ -15,7 +15,9 @@ export default function RentalsPage() {
   const [expandedRental, setExpandedRental] = useState<string | null>(null);
   const [rentalCodes, setRentalCodes] = useState<Record<string, Array<{ sms: string; code: string; full_sms: string; number: string; time: string }>>>({});
   const [loadingCodes, setLoadingCodes] = useState(false);
+  const [wakingRentalId, setWakingRentalId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [error, setError] = useState('');
 
   const [copiedRentalId, setCopiedRentalId] = useState<string | null>(null);
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<string | null>(null);
@@ -41,8 +43,13 @@ export default function RentalsPage() {
           setRentals(data.rentals || []);
         } else if (res.status === 401) {
           router.push('/login');
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error || 'Unable to load your rentals.');
         }
-      } catch { /* keep existing */ }
+      } catch {
+        setError('Unable to load your rentals. Check your connection and try again.');
+      }
       finally { setLoading(false); }
     };
     fetchRentals();
@@ -59,15 +66,26 @@ export default function RentalsPage() {
     if (!rentalCodes[rentalId]) {
       setLoadingCodes(true);
       try {
+        const rental = rentals.find((item) => item.id === rentalId);
+        if (rental && !rental.alwaysOn && rental.provider === 'textverified') {
+          setWakingRentalId(rentalId);
+          const wakeResponse = await fetch(`/api/rentals?rentalId=${encodeURIComponent(rentalId)}&action=wake`, { method: 'POST' });
+          if (!wakeResponse.ok) {
+            const wakeData = await wakeResponse.json().catch(() => ({}));
+            throw new Error(wakeData.error || 'Unable to wake this rental.');
+          }
+        }
         const res = await fetch(`/api/rentals?rentalId=${rentalId}&action=codes`);
         if (res.ok) {
           const data = await res.json();
           setRentalCodes((prev) => ({ ...prev, [rentalId]: data.codes || [] }));
         }
-      } catch { /* failed */ }
-      finally { setLoadingCodes(false); }
+      } catch (codeError) {
+        setError(codeError instanceof Error ? codeError.message : 'Unable to load codes for this rental.');
+      }
+      finally { setLoadingCodes(false); setWakingRentalId(null); }
     }
-  }, [expandedRental, rentalCodes]);
+  }, [expandedRental, rentalCodes, rentals]);
 
   const handleCancelRental = useCallback(async (rentalId: string) => {
     if (!confirm('Are you sure you want to cancel this rental?')) return;
@@ -76,7 +94,9 @@ export default function RentalsPage() {
       if (res.ok) {
         setRentals((prev) => prev.map((r) => (r.id === rentalId ? { ...r, status: 'cancelled' } : r)));
       }
-    } catch { /* failed */ }
+    } catch {
+      setError('Unable to cancel this rental. Check your connection and try again.');
+    }
   }, []);
 
   const filteredRentals = filter === 'all' ? rentals : rentals.filter((r) => r.status === filter);
@@ -84,6 +104,7 @@ export default function RentalsPage() {
   const getStatusBadge = (status: string) => {
     const map: Record<string, string> = {
       active: 'badge--active',
+      pending: 'badge--plan',
       expired: 'badge--expired',
       cancelled: 'badge--cancelled',
     };
@@ -92,34 +113,42 @@ export default function RentalsPage() {
 
   if (loading) {
     return (
-      <div className="auth-page">
+      <div className="rentals-page rentals-page--loading page-container">
         <SpinnerIcon className="spinner--lg spinner--indigo" />
+        <span>Loading rentals</span>
       </div>
     );
   }
 
   return (
-    <div className="sub-page page-container">
-      {/* Breadcrumb */}
-      <div className="breadcrumb">
-        <Link href="/dashboard" className="breadcrumb__link">
-          <ArrowLeftIcon className="icon-md" /> Back to Dashboard
+    <div className="rentals-page page-container">
+      <div className="rentals-page__back-row">
+        <Link href="/dashboard" className="orders-back-link">
+          <ArrowLeftIcon className="icon-sm" /> Back to Dashboard
         </Link>
+        <span className="rentals-page__label">PHONE RENTALS</span>
       </div>
 
-      <div className="sub-page-header">
+      <header className="rentals-page__header">
         <div>
-          <h1 className="sub-page-header__title">My Rentals</h1>
-          <p className="sub-page-header__subtitle">Manage your rented phone numbers and view received codes.</p>
+          <p className="rentals-page__eyebrow">DEDICATED NUMBERS</p>
+          <h1 className="rentals-page__title">Phone rentals</h1>
+          <p className="rentals-page__subtitle">Manage active numbers and view incoming codes in one place.</p>
         </div>
-        <Link href="/dashboard" className="sub-page-header__action">
+        <Link href="/dashboard?tab=rental" className="rentals-page__action">
           <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-          New Rental
+          Start a rental
         </Link>
-      </div>
+      </header>
 
-      {/* Filters */}
-      <div className="filters">
+      {error && <div className="rentals-page__error" role="alert">{error}</div>}
+
+      <section className="rentals-toolbar" aria-label="Rental filters">
+        <div>
+          <p className="rentals-toolbar__eyebrow">YOUR NUMBERS</p>
+          <h2>Rental history</h2>
+        </div>
+        <div className="filters">
         {[
           { key: 'all', label: 'All' },
           { key: 'active', label: 'Active' },
@@ -128,54 +157,62 @@ export default function RentalsPage() {
         ].map((f) => (
           <button
             key={f.key}
+            type="button"
             onClick={() => setFilter(f.key)}
             className={`filter-btn ${filter === f.key ? 'filter-btn--active' : ''}`}
+            aria-pressed={filter === f.key}
           >
             {f.label}
           </button>
         ))}
-      </div>
+        </div>
+      </section>
 
-      {/* Rentals list */}
       {filteredRentals.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state__icon-wrapper">
-            <PhoneIcon className="icon-2xl empty-state__icon" />
+        <div className="rentals-empty">
+          <div className="rentals-empty__icon">
+            <PhoneIcon className="icon-xl" />
           </div>
-          <h3 className="empty-state__title">No rentals found</h3>
-          <p className="empty-state__desc">
-            {rentals.length === 0 ? 'Rent a phone number for a week, month, or longer from the dashboard.' : 'No rentals match the selected filter.'}
+          <h3>No phone rentals yet</h3>
+          <p>
+            {rentals.length === 0 ? 'Start a rental from the dashboard to keep a number active for the services you need.' : 'No rentals match this filter.'}
           </p>
           {rentals.length === 0 && (
-            <Link href="/dashboard" className="empty-state__cta">Start a Rental</Link>
+            <Link href="/dashboard?tab=rental" className="rentals-empty__cta">Start a rental</Link>
           )}
         </div>
       ) : (
-        <div className="card-list">
+        <div className="rentals-list">
           {filteredRentals.map((rental) => {
-            const service = SUPPORTED_SERVICES.find((s) => s.id === rental.service);
+            const service = rental.service === 'allservices' ? { name: 'All services' } : SUPPORTED_SERVICES.find((s) => s.id === rental.service);
             const country = SUPPORTED_COUNTRIES.find((c) => c.code === rental.country);
-            const plan = PLAN_DURATIONS[rental.plan as keyof typeof PLAN_DURATIONS];
+            const plan = TEXTVERIFIED_RENTAL_DURATIONS.find((option) => option.value === rental.plan)
+              || PLAN_DURATIONS[rental.plan as keyof typeof PLAN_DURATIONS];
             const daysLeft = Math.max(0, Math.ceil((new Date(rental.expiresAt).getTime() - now) / (1000 * 60 * 60 * 24)));
             const isActive = rental.status === 'active';
             const progressPercent = plan ? Math.min(100, ((plan.days - daysLeft) / plan.days) * 100) : 0;
 
             return (
-              <div key={rental.id} className="list-card">
-                <div className="list-card__header">
+              <article key={rental.id} className="rental-card">
+                <div className="rental-card__header">
                   <div>
-                    <div className="list-card__service">{service?.name || rental.service}</div>
-                    <div className="list-card__country">{country?.name || rental.country}</div>
+                    <div className="rental-card__service">{service?.name || rental.service}</div>
+                    <div className="rental-card__country">
+                      {country && <i className={`fi fi-${country.code.toLowerCase()}`} aria-hidden="true" />}
+                      {country?.name || rental.country}
+                    </div>
                   </div>
-                  <div className="list-card__badges">
+                  <div className="rental-card__badges">
                     <span className={`badge ${getStatusBadge(rental.status)}`}>{rental.status}</span>
                     <span className="badge badge--plan">{plan?.label || rental.plan}</span>
                   </div>
                 </div>
 
-                <div className="card-details">
+                <div className="rental-card__provider">{rental.provider === 'textverified' ? PROVIDER_DISPLAY_NAMES.textverified : PROVIDER_DISPLAY_NAMES.smspool} · {rental.serviceScope === 'all' ? 'All services' : 'Selected service'}</div>
+
+                <div className="card-details rental-card__details">
                   <div>
-                    <div className="card-detail__label">Phone Number</div>
+                  <div className="card-detail__label">Phone number</div>
                     <div className="card-detail__phone-row">
                       <span>{rental.phoneNumber}</span>
                       <button
@@ -194,7 +231,7 @@ export default function RentalsPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="card-detail__label">Cost</div>
+                    <div className="card-detail__label">Price</div>
                     <div className="card-detail__value">${rental.cost.toFixed(2)}</div>
                   </div>
                   <div>
@@ -209,9 +246,8 @@ export default function RentalsPage() {
                   </div>
                 </div>
 
-                {/* Progress bar */}
                 {isActive && plan && (
-                  <div className="mb-4">
+                  <div className="rental-card__progress">
                     <div className="progress-bar">
                       <div className="progress-bar__fill" style={{ width: `${progressPercent}%` }} />
                     </div>
@@ -222,12 +258,15 @@ export default function RentalsPage() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="card-actions">
-                  <button onClick={() => handleViewCodes(rental.id)} className="card-action-btn">
-                    <EyeIcon className="icon-sm" />
-                    {expandedRental === rental.id ? 'Hide Codes' : 'View Codes'}
-                  </button>
+                  {rental.status === 'pending' ? (
+                    <span className="card-action-btn card-action-btn--disabled">Waiting for assignment</span>
+                  ) : (
+                    <button onClick={() => handleViewCodes(rental.id)} className="card-action-btn">
+                      <EyeIcon className="icon-sm" />
+                      {expandedRental === rental.id ? 'Hide Codes' : wakingRentalId === rental.id ? 'Waking line…' : rental.alwaysOn ? 'View Codes' : 'Wake & View Codes'}
+                    </button>
+                  )}
                   {isActive && (
                     <button onClick={() => handleCancelRental(rental.id)} className="card-action-btn card-action-btn--danger">
                       <TrashIcon className="icon-sm" />
@@ -236,14 +275,13 @@ export default function RentalsPage() {
                   )}
                 </div>
 
-                {/* Received codes */}
                 {expandedRental === rental.id && (
                   <div className="codes-section">
                     <h4 className="codes-section__title">
                       <svg className="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
-                      Received Codes
+                      Incoming codes
                     </h4>
                     {loadingCodes ? (
                       <div className="codes-section__loading">
@@ -276,11 +314,11 @@ export default function RentalsPage() {
                         })}
                       </div>
                     ) : (
-                      <p className="codes-section__empty">No verification codes received yet.</p>
+                      <p className="codes-section__empty">No codes received yet.</p>
                     )}
                   </div>
                 )}
-              </div>
+              </article>
             );
           })}
         </div>

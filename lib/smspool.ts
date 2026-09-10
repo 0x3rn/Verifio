@@ -35,6 +35,22 @@ export function applyMarkup(basePrice: number): number {
   return Math.round(basePrice * 1.5 * 100) / 100;
 }
 
+export function calculateProxyPricing(basePrice: number, bandwidthGb: number) {
+  if (!Number.isFinite(basePrice) || basePrice <= 0) throw new Error('Proxy base price must be greater than zero.');
+  if (!Number.isFinite(bandwidthGb) || bandwidthGb <= 0) throw new Error('Proxy bandwidth must be greater than zero.');
+
+  const displayPrice = applyMarkup(basePrice);
+  return {
+    displayPrice,
+    ratePerGb: Math.round((displayPrice / bandwidthGb) * 100) / 100,
+  };
+}
+
+export function calculateProxyExtensionPrice(sitePackagePrice: number): number {
+  if (!Number.isFinite(sitePackagePrice) || sitePackagePrice <= 0) throw new Error('Proxy package price must be greater than zero.');
+  return Math.round(sitePackagePrice * 0.5 * 100) / 100;
+}
+
 import { parsePhoneNumber, type CountryCode } from 'libphonenumber-js';
 
 export function formatPhoneNumber(number: string, countryCode: string): string {

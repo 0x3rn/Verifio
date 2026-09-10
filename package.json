@@ -9,8 +9,12 @@
     "lint": "eslint",
     "db:migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate-neon.ts",
     "db:check": "node --env-file=.env.local --experimental-strip-types scripts/check-neon.ts",
+    "db:proxy:check": "node --env-file=.env.local --experimental-strip-types scripts/check-proxy-data.ts",
     "auth:check": "node --env-file=.env.local --experimental-strip-types scripts/check-clerk.ts",
     "smspool:check": "node --env-file=.env.local --experimental-strip-types scripts/check-smspool.ts",
+    "proxy:blocklist:check": "node --experimental-strip-types scripts/check-proxy-blocklist.ts",
+    "proxy:pricing:check": "node --experimental-strip-types scripts/check-proxy-pricing.ts",
+    "textverified:rentals:check": "node --experimental-strip-types scripts/check-textverified-rentals.ts",
     "security:check": "node --env-file=.env.local --experimental-strip-types scripts/check-security.ts",
     "test:e2e": "node --env-file=.env.local ./node_modules/@playwright/test/cli.js test"
   },

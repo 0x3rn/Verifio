@@ -1,23 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useClerk, useSignIn } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
 
-function getClerkErrorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object' || !('errors' in error)) return null;
-  const errors = (error as { errors?: unknown }).errors;
-  if (!Array.isArray(errors) || !errors[0] || typeof errors[0] !== 'object') return null;
-  const code = (errors[0] as { code?: unknown }).code;
-  return typeof code === 'string' ? code : null;
+function getClerkErrorMessage(error: unknown): string | null {
+  if (!error || typeof error !== 'object') return null;
+  const message = (error as { longMessage?: unknown; message?: unknown }).longMessage ?? (error as { message?: unknown }).message;
+  return typeof message === 'string' ? message : null;
+}
+
+function isAlreadySignedInError(error: unknown): boolean {
+  return getClerkErrorMessage(error)?.toLowerCase().includes('already signed in') ?? false;
 }
 
 export function AuthSignInForm() {
-  const router = useRouter();
   const clerk = useClerk();
-  const isLoaded = clerk.loaded;
-  const signIn = clerk.client?.signIn;
+  const { signIn, fetchStatus } = useSignIn();
+  const isLoaded = fetchStatus !== 'fetching';
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +31,7 @@ export function AuthSignInForm() {
     const submittedIdentifier = String(formData.get('identifier') ?? '');
     const submittedPassword = String(formData.get('password') ?? '');
 
-    if (!isLoaded || !signIn) {
+    if (!isLoaded) {
       setErrorMessage('Sign-in is still loading. Please try again in a moment.');
       return;
     }
@@ -44,41 +44,52 @@ export function AuthSignInForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await signIn.create({
-        strategy: 'password',
+      const clearStaleSession = async () => {
+        const staleSession = clerk.client?.sessions.find((session) => session.status === 'active');
+        if (!staleSession) return false;
+        await clerk.signOut({ sessionId: staleSession.id });
+        await signIn.reset();
+        return true;
+      };
+
+      await clearStaleSession();
+      let result = await signIn.password({
         identifier: normalizedIdentifier,
         password: submittedPassword,
       });
 
-      if (result.status !== 'complete' || !result.createdSessionId) {
+      if (result.error && isAlreadySignedInError(result.error)) {
+        if (!(await clearStaleSession())) {
+          setErrorMessage('This browser already has a sign-in session, but it could not be restored. Refresh and try again.');
+          return;
+        }
+        result = await signIn.password({
+          identifier: normalizedIdentifier,
+          password: submittedPassword,
+        });
+      }
+
+      if (result.error) {
+        setErrorMessage('Those sign-in details were not accepted. Check them and try again.');
+        return;
+      }
+
+      if (signIn.status !== 'complete' || !signIn.createdSessionId) {
         setErrorMessage('This account needs another verification step. Please use the registration or recovery flow.');
         return;
       }
 
-      try {
-        await clerk.setActive({ session: result.createdSessionId });
-      } catch {
+      const finalizeResult = await signIn.finalize({
+        navigate: async () => undefined,
+      });
+
+      if (finalizeResult.error) {
         setErrorMessage('Clerk accepted the credentials, but the browser session could not be activated. Refresh and try again.');
         return;
       }
 
-      router.replace('/dashboard');
-    } catch (error) {
-      const code = getClerkErrorCode(error);
-      if (code === 'session_exists') {
-        const activeSession = clerk.client?.sessions.find((session) => session.status === 'active');
-        if (activeSession) {
-          try {
-            await clerk.setActive({ session: activeSession.id });
-            router.replace('/dashboard');
-            return;
-          } catch {
-            setErrorMessage('An existing browser session could not be restored. Refresh and try again.');
-            return;
-          }
-        }
-      }
-
+      window.location.assign('/dashboard');
+    } catch {
       setErrorMessage('Those sign-in details were not accepted. Check them and try again.');
     } finally {
       setIsSubmitting(false);

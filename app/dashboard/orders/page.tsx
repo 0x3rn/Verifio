@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon, CheckCircleIcon, ClipboardIcon, ClockIcon, SpinnerIcon } from '@/components/Icons';
 import type { VerificationOrder } from '@/lib/types';
-import { SUPPORTED_SERVICES, SUPPORTED_COUNTRIES } from '@/lib/types';
+import { PROVIDER_DISPLAY_NAMES, SUPPORTED_SERVICES, SUPPORTED_COUNTRIES } from '@/lib/types';
 
 interface CountryMeta {
   name: string;
@@ -21,8 +21,8 @@ const filters: Array<{ key: FilterKey; label: string }> = [
   { key: 'expired', label: 'Expired' },
   { key: 'cancelled', label: 'Cancelled' },
   { key: 'sms', label: 'SMS' },
-  { key: 'smspool', label: 'SMSPool' },
-  { key: 'textverified', label: 'Text Verified' },
+  { key: 'smspool', label: PROVIDER_DISPLAY_NAMES.smspool },
+  { key: 'textverified', label: PROVIDER_DISPLAY_NAMES.textverified },
 ];
 
 function formatTime(ms: number): string {
@@ -275,7 +275,7 @@ export default function OrdersPage() {
                       <span className="orders-status__dot" aria-hidden="true" />
                       {formatStatus(order.status)}
                     </span>
-                    <span className="orders-type">{order.provider === 'textverified' ? 'Text Verified' : 'SMSPool'}</span>
+                    <span className="orders-type">{order.provider === 'textverified' ? PROVIDER_DISPLAY_NAMES.textverified : PROVIDER_DISPLAY_NAMES.smspool}</span>
                   </div>
                 </div>
 

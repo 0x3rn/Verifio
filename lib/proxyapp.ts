@@ -36,6 +36,20 @@ export interface ProxyAppExtensionResult {
   is_active?: number;
 }
 
+export interface ProxyBlocklistResult {
+  blocked: boolean;
+  domain: string;
+  matchedRule: string | null;
+  message: string;
+}
+
+export class ProxyBlocklistInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProxyBlocklistInputError';
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -94,6 +108,58 @@ async function proxyRequest(path: string, init: RequestInit = {}): Promise<Recor
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function proxyPublicRequest(path: string): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${PROXYAPP_BASE_URL}${path}`, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    const body = getPayload(await response.json().catch(() => ({})));
+    if (!response.ok || body.success === 0 || body.success === false) {
+      throw new Error(providerError(body, `Proxy provider request failed (${response.status}).`));
+    }
+    return body;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw new Error('Proxy provider request timed out.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function normalizeProxyBlocklistTarget(value: string): string {
+  const target = value.trim();
+  if (!target) throw new ProxyBlocklistInputError('Enter a domain or URL to check.');
+  if (target.length > 2048) throw new ProxyBlocklistInputError('The domain or URL is too long.');
+
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(target) ? target : `https://${target}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new ProxyBlocklistInputError('Enter a valid domain or http(s) URL.');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
+    throw new ProxyBlocklistInputError('Enter a valid domain or http(s) URL.');
+  }
+  return target;
+}
+
+export async function checkProxyBlocklist(value: string): Promise<ProxyBlocklistResult> {
+  const target = normalizeProxyBlocklistTarget(value);
+  const body = await proxyPublicRequest(`/blocklist?domain=${encodeURIComponent(target)}`);
+  const blocked = body.blocked === true || body.blocked === 1 || body.blocked === '1';
+  const matchedRule = asString(body.matched_rule ?? body.matchedRule) || null;
+  return {
+    blocked,
+    domain: asString(body.domain) || target,
+    matchedRule,
+    message: asString(body.message) || (blocked ? 'This domain is currently in the blocklist.' : 'This domain is not currently in the blocklist.'),
+  };
 }
 
 function parsePackage(value: unknown): ProxyAppPackage | undefined {

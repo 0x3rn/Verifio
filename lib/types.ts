@@ -9,6 +9,12 @@ export interface User {
   updatedAt: string;
 }
 
+// User-facing labels keep provider infrastructure details private.
+export const PROVIDER_DISPLAY_NAMES = {
+  smspool: 'Atlas',
+  textverified: 'Lumen',
+} as const;
+
 export interface VerificationOrder {
   id: string;
   userId: string;
@@ -60,10 +66,18 @@ export interface RentalNumber {
   phoneNumber: string;
   country: string;
   service: string;
-  status: 'active' | 'expired' | 'cancelled';
-  plan: 'weekly' | 'monthly' | 'quarterly' | 'biannual';
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  plan: RentalPlan;
   cost: number;
-  smspoolRentalId: string;
+  provider: 'textverified' | 'smspool';
+  providerRentalId: string;
+  serviceScope: 'specific' | 'all';
+  isRenewable: boolean;
+  numberType: 'mobile';
+  capability: 'sms';
+  alwaysOn: boolean;
+  areaCodes: string[];
+  billingCycleId: string | null;
   startedAt: string;
   expiresAt: string;
   renewedAt: string | null;
@@ -71,6 +85,34 @@ export interface RentalNumber {
 
 export type ThemeMode = 'light' | 'dark';
 export type PlanTier = 'weekly' | 'monthly' | 'quarterly' | 'biannual';
+
+export type TextVerifiedRentalDuration =
+  | 'oneDay'
+  | 'threeDay'
+  | 'sevenDay'
+  | 'fourteenDay'
+  | 'thirtyDay'
+  | 'ninetyDay'
+  | 'oneYear';
+
+export type RentalPlan = PlanTier | TextVerifiedRentalDuration;
+
+export interface TextVerifiedRentalDurationOption {
+  value: TextVerifiedRentalDuration;
+  label: string;
+  days: number;
+  renewable: boolean;
+}
+
+export const TEXTVERIFIED_RENTAL_DURATIONS: TextVerifiedRentalDurationOption[] = [
+  { value: 'oneDay', label: '1 day', days: 1, renewable: false },
+  { value: 'threeDay', label: '3 days', days: 3, renewable: false },
+  { value: 'sevenDay', label: '7 days', days: 7, renewable: false },
+  { value: 'fourteenDay', label: '14 days', days: 14, renewable: false },
+  { value: 'thirtyDay', label: '30 days', days: 30, renewable: true },
+  { value: 'ninetyDay', label: '90 days', days: 90, renewable: true },
+  { value: 'oneYear', label: '1 year', days: 365, renewable: true },
+];
 
 export const PLAN_DURATIONS: Record<PlanTier, { days: number; label: string; discount: number }> = {
   weekly: { days: 7, label: 'Weekly', discount: 0 },

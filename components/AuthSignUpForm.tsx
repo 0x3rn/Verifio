@@ -1,15 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useSignUp } from '@clerk/nextjs';
 import { FormEvent, useState } from 'react';
 
 export function AuthSignUpForm() {
-  const router = useRouter();
-  const clerk = useClerk();
-  const isLoaded = clerk.loaded;
-  const signUp = clerk.client?.signUp;
+  const { signUp, fetchStatus } = useSignUp();
+  const isLoaded = fetchStatus !== 'fetching';
+  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,14 +18,19 @@ export function AuthSignUpForm() {
     event.preventDefault();
     setErrorMessage('');
 
-    if (!isLoaded || !signUp) {
+    if (!isLoaded) {
       setErrorMessage('Registration is still loading. Please try again in a moment.');
       return;
     }
 
     const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedUsername || !password) {
       setErrorMessage('Enter a username and password to continue.');
+      return;
+    }
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setErrorMessage('Enter a valid email address or leave the email field blank.');
       return;
     }
     if (normalizedUsername.length < 3) {
@@ -45,15 +48,32 @@ export function AuthSignUpForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await signUp.create({ username: normalizedUsername, password });
+      const result = await signUp.password({
+        username: normalizedUsername,
+        password,
+        ...(normalizedEmail ? { emailAddress: normalizedEmail } : {}),
+      });
 
-      if (result.status !== 'complete' || !result.createdSessionId) {
+      if (result.error) {
+        setErrorMessage('We could not create that account. Try a different username or check the form details.');
+        return;
+      }
+
+      if (signUp.status !== 'complete' || !signUp.createdSessionId) {
         setErrorMessage('Additional verification is required before your account can be activated.');
         return;
       }
 
-      await clerk.setActive({ session: result.createdSessionId });
-      router.replace('/dashboard');
+      const finalizeResult = await signUp.finalize({
+        navigate: async () => undefined,
+      });
+
+      if (finalizeResult.error) {
+        setErrorMessage('Your account was created, but the browser session could not be activated. Refresh and try again.');
+        return;
+      }
+
+      window.location.assign('/dashboard');
     } catch {
       setErrorMessage('We could not create that account. Try a different username or check the form details.');
     } finally {
@@ -65,6 +85,20 @@ export function AuthSignUpForm() {
     <form className="auth-form" onSubmit={handleSubmit} noValidate>
       <div className="auth-form__error-slot" aria-live="polite">
         {errorMessage ? <p className="auth-error" role="alert">{errorMessage}</p> : null}
+      </div>
+
+      <div>
+        <label className="form-field__label" htmlFor="sign-up-email">Email address <span className="form-field__optional">(optional)</span></label>
+        <input
+          className="form-field__input"
+          id="sign-up-email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={!isLoaded || isSubmitting}
+        />
       </div>
 
       <div>

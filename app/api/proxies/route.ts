@@ -10,18 +10,19 @@ import {
   getUserProxyOrders,
   releaseRequestLock,
 } from '@/lib/db';
-import { applyMarkup } from '@/lib/smspool';
+import { applyMarkup, calculateProxyExtensionPrice, calculateProxyPricing } from '@/lib/smspool';
 import { getProxyDetails, getProxyPackages, isProxyConfigured, orderProxyPackage, PROXY_PACKAGE_FEATURES } from '@/lib/proxyapp';
 import { isSameOriginRequest, requestRateLimitKey } from '@/lib/request-security';
 
 function toPublicPackage(packageData: { id: number; name: string; gb: number; price: number; rate_per_gb: number; length_days: number }) {
+  const pricing = calculateProxyPricing(packageData.price, packageData.gb);
   return {
     id: packageData.id,
     name: packageData.name,
     bandwidthGb: packageData.gb,
-    price: packageData.price,
-    displayPrice: applyMarkup(packageData.price),
-    ratePerGb: packageData.rate_per_gb,
+    price: pricing.displayPrice,
+    displayPrice: pricing.displayPrice,
+    ratePerGb: pricing.ratePerGb,
     lengthDays: packageData.length_days,
     features: [...PROXY_PACKAGE_FEATURES],
     extendable: true,
@@ -43,7 +44,7 @@ export async function GET() {
         return {
           orderId: order.id,
           proxy,
-          extensionPrice: proxy.extend_cost && proxy.extend_cost > 0 ? applyMarkup(proxy.extend_cost) : null,
+          extensionPrice: proxy.extend_cost && proxy.extend_cost > 0 ? calculateProxyExtensionPrice(order.cost) : null,
         };
       } catch {
         return null;
