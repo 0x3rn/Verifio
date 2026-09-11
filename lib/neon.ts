@@ -16,6 +16,11 @@ function createNeonClient() {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false,
+    // `sslmode=require` makes Postgres.js pass `rejectUnauthorized: false` to
+    // Node TLS. Cloudflare Workers deliberately do not support that option.
+    // Neon presents a hostname-valid certificate, so require full verification
+    // instead of disabling it.
+    ssl: 'verify-full',
   });
 }
 
