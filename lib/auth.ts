@@ -16,10 +16,24 @@ function getAuthPool(): Pool {
     if (!connectionString) {
       throw new Error('AUTH_DATABASE_CONFIG_MISSING: Set DATABASE_URL for Better Auth.');
     }
+
+    // Neon commonly supplies `sslmode=require`. node-postgres translates that
+    // query parameter to `rejectUnauthorized: false`, but Cloudflare Workers'
+    // node:tls implementation rejects that option entirely. Strip TLS query
+    // parameters and enable TLS with the boolean form so node-postgres relies on
+    // the runtime's secure defaults without forwarding unsupported options.
+    const databaseUrl = new URL(connectionString);
+    databaseUrl.searchParams.delete('sslmode');
+    databaseUrl.searchParams.delete('sslcert');
+    databaseUrl.searchParams.delete('sslkey');
+    databaseUrl.searchParams.delete('sslrootcert');
+    databaseUrl.searchParams.delete('uselibpqcompat');
+
     globalForAuth.__verifioAuthPool = new Pool({
-      connectionString,
-      max: 10,
-      connectionTimeoutMillis: 10_000,
+      connectionString: databaseUrl.toString(),
+      ssl: true,
+      max: 1,
+      connectionTimeoutMillis: 6_000,
       idleTimeoutMillis: 20_000,
     });
   }

@@ -10,7 +10,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ user });
-  } catch {
+  } catch (error) {
+    console.error('GET /api/auth/me failed', error);
     return NextResponse.json({ error: 'An error occurred.' }, { status: 500 });
   }
 }

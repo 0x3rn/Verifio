@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { authClient, withAuthTimeout } from '@/lib/auth-client';
+import { markFreshAuthNavigation } from '@/lib/fresh-auth-navigation';
 
 function getAuthErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null;
@@ -67,6 +68,7 @@ export function AuthSignUpForm() {
         return;
       }
 
+      markFreshAuthNavigation();
       window.location.assign('/dashboard');
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'AUTH_REQUEST_TIMEOUT'

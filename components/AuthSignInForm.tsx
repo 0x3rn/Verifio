@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { authClient, withAuthTimeout } from '@/lib/auth-client';
+import { markFreshAuthNavigation } from '@/lib/fresh-auth-navigation';
 import { EyeIcon, EyeOffIcon } from '@/components/Icons';
 
 function getAuthErrorMessage(error: unknown): string | null {
@@ -34,14 +35,15 @@ export function AuthSignInForm() {
     setIsSubmitting(true);
     try {
       const result = normalizedIdentifier.includes('@')
-        ? await withAuthTimeout(authClient.signIn.email({ email: normalizedIdentifier.toLowerCase(), password, callbackURL: '/dashboard' }))
-        : await withAuthTimeout(authClient.signIn.username({ username: normalizedIdentifier, password, callbackURL: '/dashboard' }));
+        ? await withAuthTimeout(authClient.signIn.email({ email: normalizedIdentifier.toLowerCase(), password }))
+        : await withAuthTimeout(authClient.signIn.username({ username: normalizedIdentifier, password }));
 
       if (result.error) {
         setErrorMessage(getAuthErrorMessage(result.error) || 'Those sign-in details were not accepted. Check them and try again.');
         return;
       }
 
+      markFreshAuthNavigation();
       window.location.assign('/dashboard');
     } catch (error) {
       setErrorMessage(error instanceof Error && error.message === 'AUTH_REQUEST_TIMEOUT'
