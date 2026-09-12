@@ -4130,10 +4130,15 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   background: #d85843;
 }
 
-/* Keep validation feedback in flow without letting the auth card jump. */
-.auth-form-card--login { min-height: 26rem; }
-.auth-form-card--register { min-height: 32rem; }
-.auth-form__error-slot { min-height: 0; }
+/* Reserve a bounded feedback area so auth messages never resize the card. */
+.auth-form-card--login { height: 28rem; }
+.auth-form-card--register { height: 38rem; }
+.auth-form__error-slot {
+  height: 5.25rem;
+  min-height: 5.25rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
 
 /* Dashboard surface follows the same paper, lavender,
    plum, and coral language as the landing page. */
@@ -4996,6 +5001,46 @@ main:has(.billing-form) .dashboard-submit:hover { background: #402778; }
 /* The custom auth fields do not contain a leading icon. */
 .auth-form .form-field__input {
   padding-left: 1rem;
+}
+
+.auth-password-field {
+  position: relative;
+}
+
+.auth-form .auth-password-field__input {
+  padding-right: 3rem;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #786a80;
+  cursor: pointer;
+}
+
+.auth-password-toggle:hover {
+  background: #f0e8fb;
+  color: #5b3a9d;
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid #5b3a9d;
+  outline-offset: 1px;
+}
+
+.auth-password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 /* The dashboard order flow is the working counterpart to the homepage console. */

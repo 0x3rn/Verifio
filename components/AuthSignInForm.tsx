@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { authClient, withAuthTimeout } from '@/lib/auth-client';
+import { EyeIcon, EyeOffIcon } from '@/components/Icons';
 
 function getAuthErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null;
@@ -16,6 +17,7 @@ function getAuthErrorMessage(error: unknown): string | null {
 export function AuthSignInForm() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -73,17 +75,29 @@ export function AuthSignInForm() {
 
       <div>
         <label className="form-field__label" htmlFor="sign-in-password">Password</label>
-        <input
-          className="form-field__input"
-          id="sign-in-password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          disabled={isSubmitting}
-          required
-        />
+        <div className="auth-password-field">
+          <input
+            className="form-field__input auth-password-field__input"
+            id="sign-in-password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={isSubmitting}
+            required
+          />
+          <button
+            className="auth-password-toggle"
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            disabled={isSubmitting}
+          >
+            {showPassword ? <EyeOffIcon className="icon-sm" /> : <EyeIcon className="icon-sm" />}
+          </button>
+        </div>
       </div>
 
       <button className="auth-submit" type="submit" disabled={isSubmitting}>

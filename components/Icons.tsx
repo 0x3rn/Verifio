@@ -208,6 +208,12 @@ export const EyeIcon: React.FC<IconProps> = ({ className = 'icon-md' }) => (
   </svg>
 );
 
+export const EyeOffIcon: React.FC<IconProps> = ({ className = 'icon-md' }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.585 10.587a2 2 0 002.828 2.828M9.878 5.09A9.97 9.97 0 0112 4.864c4.478 0 8.268 2.943 9.542 7a9.97 9.97 0 01-2.113 3.593M6.61 6.611A10.934 10.934 0 002.458 12c1.274 4.057 5.065 7 9.542 7a9.98 9.98 0 005.39-1.564" />
+  </svg>
+);
+
 export const TrashIcon: React.FC<IconProps> = ({ className = 'icon-md' }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
