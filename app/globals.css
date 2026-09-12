@@ -4131,18 +4131,28 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   background: #d85843;
 }
 
-/* Keep feedback outside the form flow so the cards stay compact and fixed. */
-.auth-form-card--login { height: 21rem; }
-.auth-form-card--register { height: 31rem; }
+/* Keep auth feedback in the card's fixed header row. It temporarily replaces
+   the back link, so showing a message never resizes or shifts the form. */
+.auth-form-card--login { height: 21rem; overflow: hidden; }
+.auth-form-card--register { height: 31rem; overflow: hidden; }
 .auth-form__error-slot {
+  position: absolute;
+  z-index: 1;
+  top: 1.25rem;
+  right: 1.25rem;
+  left: 1.25rem;
   min-height: 0;
-  max-height: 5.25rem;
+  max-height: 3.45rem;
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
 .auth-form__error-slot:empty { display: none; }
-.auth-form-card:has(.auth-error) .auth-back-link-wrap { margin-bottom: 0.5rem; }
-.auth-form-card:has(.auth-error) .auth-form { gap: 0.5rem; }
+.auth-form__error-slot .auth-error {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.auth-form-card:has(.auth-error) .auth-back-link-wrap { visibility: hidden; }
 
 /* Dashboard surface follows the same paper, lavender,
    plum, and coral language as the landing page. */
