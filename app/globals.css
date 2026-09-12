@@ -4085,6 +4085,7 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 }
 
 .auth-form-card {
+  position: relative;
   padding: 1.25rem;
 }
 
@@ -4130,12 +4131,17 @@ details[open] .faq__chevron { transform: rotate(180deg); }
   background: #d85843;
 }
 
-/* Reserve a bounded feedback area so auth messages never resize the card. */
-.auth-form-card--login { height: 28rem; }
-.auth-form-card--register { height: 38rem; }
+/* Keep feedback outside the form flow so the cards stay compact and fixed. */
+.auth-form-card--login { height: 21rem; }
+.auth-form-card--register { height: 31rem; }
 .auth-form__error-slot {
-  height: 5.25rem;
-  min-height: 5.25rem;
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 0.625rem);
+  right: 1.25rem;
+  left: 1.25rem;
+  min-height: 0;
+  max-height: 5.25rem;
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
