@@ -4135,16 +4135,14 @@ details[open] .faq__chevron { transform: rotate(180deg); }
 .auth-form-card--login { height: 21rem; }
 .auth-form-card--register { height: 31rem; }
 .auth-form__error-slot {
-  position: absolute;
-  z-index: 2;
-  top: calc(100% + 0.625rem);
-  right: 1.25rem;
-  left: 1.25rem;
   min-height: 0;
   max-height: 5.25rem;
   overflow-y: auto;
   overflow-wrap: anywhere;
 }
+.auth-form__error-slot:empty { display: none; }
+.auth-form-card:has(.auth-error) .auth-back-link-wrap { margin-bottom: 0.5rem; }
+.auth-form-card:has(.auth-error) .auth-form { gap: 0.5rem; }
 
 /* Dashboard surface follows the same paper, lavender,
    plum, and coral language as the landing page. */
