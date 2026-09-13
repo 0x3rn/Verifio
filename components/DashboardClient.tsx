@@ -41,6 +41,7 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
   const [selectedCountry, setSelectedCountry] = useState('');
   const [services, setServices] = useState<SelectableItem[]>(SUPPORTED_SERVICES);
   const [countries, setCountries] = useState<SelectableItem[]>(SUPPORTED_COUNTRIES.map(c => ({ id: c.code, name: c.name, code: c.code })));
+  const [smspoolConfigured, setSmspoolConfigured] = useState(false);
   const [textVerifiedServices, setTextVerifiedServices] = useState<string[]>([]);
   const [textVerifiedConfigured, setTextVerifiedConfigured] = useState(false);
   const [listsLoading, setListsLoading] = useState(true);
@@ -135,6 +136,9 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
           const data = await res.json();
           if (Array.isArray(data.services)) setServices(data.services.map((s: { ID: number; name: string }) => ({ id: String(s.ID), name: s.name })));
           if (Array.isArray(data.countries)) setCountries(data.countries.map((c: { ID: number; name: string; short_name: string }) => ({ id: String(c.ID), name: c.name, code: c.short_name })));
+          if (data.providers?.smspool) {
+            setSmspoolConfigured(Boolean(data.providers.smspool.configured));
+          }
           if (data.providers?.textverified) {
             setTextVerifiedConfigured(Boolean(data.providers.textverified.configured));
             setTextVerifiedServices(Array.isArray(data.providers.textverified.services) ? data.providers.textverified.services : []);
@@ -353,7 +357,7 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
       id: 'smspool' as const,
       name: PROVIDER_DISPLAY_NAMES.smspool,
       description: 'Broad SMS coverage',
-      available: Boolean(selectedService && selectedCountry),
+      available: Boolean(selectedService && selectedCountry && smspoolConfigured),
     },
     {
       id: 'textverified' as const,
@@ -362,6 +366,7 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
       available: textVerifiedAvailable,
     },
   ];
+  const selectedProviderAvailable = providerOptions.some(option => option.id === selectedProvider && option.available);
 
   const getServiceName = (id: string) => services.find(s => s.id === id)?.name || id;
   const getCountryName = (id: string) => countries.find(c => c.id === id)?.name || id;
@@ -561,7 +566,7 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
                   </div>
                   <button
                     onClick={handleOrder}
-                    disabled={!user || working || (activeTab === 'rental' ? (rentalServiceScope === 'specific' && !selectedService) : (!selectedService || !selectedCountry || activeOrders.length >= 5))}
+                    disabled={!user || working || (activeTab === 'rental' ? (rentalServiceScope === 'specific' && !selectedService) : (!selectedService || !selectedCountry || !selectedProviderAvailable || activeOrders.length >= 5))}
                     className="dash-btn-primary"
                   >
                     {working ? <SpinnerIcon className="w-5 h-5" /> : null}

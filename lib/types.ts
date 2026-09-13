@@ -11,8 +11,8 @@ export interface User {
 
 // User-facing labels keep provider infrastructure details private.
 export const PROVIDER_DISPLAY_NAMES = {
-  smspool: 'Atlas',
-  textverified: 'Lumen',
+  smspool: 'Global Network',
+  textverified: 'US Network',
 } as const;
 
 export interface VerificationOrder {
