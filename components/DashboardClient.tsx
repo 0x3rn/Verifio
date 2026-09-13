@@ -20,12 +20,6 @@ interface SelectableItem {
 
 type VerificationProvider = 'smspool' | 'textverified';
 
-const AUTH_RETRY_DELAYS_MS = [0, 500, 1_500];
-
-function waitFor(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 function formatTime(ms: number): string {
   if (ms <= 0) return '00:00';
   const totalSeconds = Math.floor(ms / 1000);
@@ -96,53 +90,41 @@ export default function DashboardClient({ skipInitialSkeleton = false }: { skipI
 
   useEffect(() => {
     let cancelled = false;
-    let retryTimer: number | undefined;
     const fetchUserAndOrders = async () => {
       setLoading(true);
       setLoadError('');
 
-      // A lost connection or a transient Worker failure is not a sign-out.
-      // Only an explicit 401 redirects. Retry the account check in place so a
-      // cold database connection cannot strand the user on an error screen.
-      for (const delay of AUTH_RETRY_DELAYS_MS) {
-        if (delay) await waitFor(delay);
-        if (cancelled) return;
-
-        try {
-          const userRes = await authenticatedFetch('/api/auth/me');
-          if (userRes.status === 401) {
-            router.replace('/login');
-            return;
-          }
-          if (!userRes.ok) continue;
-
-          const data = await userRes.json();
-          if (cancelled) return;
-          setUser(data.user);
-          setLoadError('');
-
-          const ordersRes = await authenticatedFetch('/api/orders');
-          if (ordersRes.ok) {
-            const ordersData = await ordersRes.json();
-            const active = (ordersData.orders || []).filter((order: VerificationOrder) => order.status === 'waiting_for_code');
-            if (!cancelled) setActiveOrders(active);
-          }
+      try {
+        const userRes = await authenticatedFetch('/api/auth/me');
+        if (userRes.status === 401) {
+          router.replace('/login');
           return;
-        } catch {
-          // Continue through the bounded retry sequence below.
         }
+        if (!userRes.ok) throw new Error('Account request failed.');
+
+        const data = await userRes.json();
+        if (cancelled) return;
+        setUser(data.user);
+        setLoading(false);
+
+        // Account confirmation is enough to render the dashboard. Orders are
+        // secondary data and should not hold the entire page behind a loader.
+        authenticatedFetch('/api/orders')
+          .then(async (ordersRes) => ordersRes.ok ? ordersRes.json() : null)
+          .then((ordersData) => {
+            if (!cancelled && ordersData) {
+              const active = (ordersData.orders || []).filter((order: VerificationOrder) => order.status === 'waiting_for_code');
+              setActiveOrders(active);
+            }
+          })
+          .catch(() => undefined);
+      } catch {
+        if (!cancelled) setLoadError('We could not reach your account. Your session is safe; try again when your connection is available.');
       }
 
-      if (!cancelled) {
-        setLoadError('We still cannot reach your account. Your session is safe, and we will keep trying automatically.');
-        retryTimer = window.setTimeout(() => setAuthReloadToken((token) => token + 1), 8_000);
-      }
     };
     fetchUserAndOrders().finally(() => { if (!cancelled) setLoading(false); });
-    return () => {
-      cancelled = true;
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-    };
+    return () => { cancelled = true; };
   }, [authReloadToken, authenticatedFetch, router]);
 
   useEffect(() => {
